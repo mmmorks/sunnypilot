@@ -54,7 +54,7 @@ SoftwarePanel::SoftwarePanel(QWidget* parent) : ListWidget(parent) {
   connect(targetBranchBtn, &ButtonControl::clicked, [=]() {
     auto current = params.get("GitBranch");
     QStringList branches = QString::fromStdString(params.get("UpdaterAvailableBranches")).split(",");
-    for (QString b : {current.c_str(), "devel-staging", "devel", "nightly", "nightly-dev", "master-ci", "master"}) {
+    for (QString b : {current.c_str(), "devel-staging", "devel", "nightly", "nightly-dev", "master"}) {
       auto i = branches.indexOf(b);
       if (i >= 0) {
         branches.removeAt(i);
@@ -70,9 +70,7 @@ SoftwarePanel::SoftwarePanel(QWidget* parent) : ListWidget(parent) {
       checkForUpdates();
     }
   });
-  if (!params.getBool("IsTestedBranch")) {
-    addItem(targetBranchBtn);
-  }
+  addItem(targetBranchBtn);
 
   // uninstall button
   auto uninstallBtn = new ButtonControl(tr("Uninstall %1").arg(getBrand()), tr("UNINSTALL"));

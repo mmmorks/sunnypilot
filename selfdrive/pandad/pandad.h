@@ -12,11 +12,12 @@ class PandaSafety {
 public:
   PandaSafety(const std::vector<Panda *> &pandas) : pandas_(pandas) {}
   void configureSafetyMode();
+  bool getOffroadMode();
 
 private:
   void updateMultiplexingMode();
-  std::string fetchCarParams();
-  void setSafetyMode(const std::string &params_string);
+  std::vector<std::string> fetchCarParams();
+  void setSafetyMode(const std::vector<std::string> &params_string);
 
   bool initialized_ = false;
   bool log_once_ = false;

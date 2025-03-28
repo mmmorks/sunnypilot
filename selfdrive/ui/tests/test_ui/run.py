@@ -1,5 +1,6 @@
-from collections import namedtuple
+#!/usr/bin/env python3
 import capnp
+import json
 import pathlib
 import shutil
 import sys
@@ -8,8 +9,9 @@ import pywinctl
 import pyautogui
 import pickle
 import time
+from collections import namedtuple
 
-from cereal import log
+from cereal import car, log, custom
 from msgq.visionipc import VisionIpcServer, VisionStreamType
 from cereal.messaging import PubMaster, log_from_bytes, sub_sock
 from openpilot.common.basedir import BASEDIR
@@ -40,6 +42,14 @@ def setup_homescreen(click, pm: PubMaster, scroll=None):
 def setup_settings_device(click, pm: PubMaster, scroll=None):
   click(100, 100)
 
+def setup_settings_network(click, pm: PubMaster, scroll=None):
+  setup_settings_device(click, pm)
+  click(278, 405)
+
+def setup_settings_network_advanced(click, pm: PubMaster, scroll=None):
+  setup_settings_network(click, pm)
+  click(1913, 90)
+
 def setup_settings_toggles(click, pm: PubMaster, scroll=None):
   setup_settings_device(click, pm)
   click(278, 632)
@@ -50,9 +60,17 @@ def setup_settings_software(click, pm: PubMaster, scroll=None):
   click(278, 742)
   time.sleep(UI_DELAY)
 
+def setup_settings_firehose(click, pm: PubMaster, scroll=None):
+  scroll(-400, 278, 962)
+  click(278, 862)
+
 def setup_settings_developer(click, pm: PubMaster, scroll=None):
+  CP = car.CarParams()
+  CP.experimentalLongitudinalAvailable = True
+  Params().put("CarParamsPersistent", CP.to_bytes())
+
   setup_settings_device(click, pm)
-  scroll(-100, 278, 962)
+  scroll(-400, 278, 962)
   click(278, 970)
   time.sleep(UI_DELAY)
 
@@ -115,7 +133,7 @@ def setup_onroad_wide_sidebar(click, pm: PubMaster, scroll=None):
   setup_onroad_wide(click, pm)
 
 def setup_body(click, pm: PubMaster, scroll=None):
-  DATA['carParams'].carParams.carName = "BODY"
+  DATA['carParams'].carParams.brand = "body"
   DATA['carParams'].carParams.notCar = True
   DATA['carState'].carState.charging = True
   DATA['carState'].carState.fuelGauge = 50.0
@@ -123,13 +141,17 @@ def setup_body(click, pm: PubMaster, scroll=None):
 
 def setup_keyboard(click, pm: PubMaster, scroll=None):
   setup_settings_device(click, pm)
-  scroll(-100, 278, 962)
+  scroll(-400, 278, 962)
   click(278, 970)
-  click(1930, 228)
+  click(1930, 390)
+
+def setup_keyboard_uppercase(click, pm: PubMaster, scroll=None):
+  setup_keyboard(click, pm, scroll)
+  click(200, 800)
 
 def setup_driver_camera(click, pm: PubMaster, scroll=None):
   setup_settings_device(click, pm)
-  click(950, 620)
+  click(1720, 620)
   DATA['deviceState'].deviceState.started = False
   setup_onroad(click, pm)
   DATA['deviceState'].deviceState.started = True
@@ -185,17 +207,36 @@ def setup_settings_sunnylink(click, pm: PubMaster, scroll=None):
   click(278, 522)
   time.sleep(UI_DELAY)
 
-def setup_settings_sunnypilot(click, pm: PubMaster, scroll=None):
+def setup_settings_sunnylink_sponsor_button(click, pm: PubMaster, scroll=None):
+  setup_settings_sunnylink(click, pm)
+  click(1967, 225)
+  time.sleep(UI_DELAY)
+
+def setup_settings_steering(click, pm: PubMaster, scroll=None):
+  CP = car.CarParams()
+  CP.carFingerprint = "HONDA_CIVIC"
+  CP_SP = custom.CarParamsSP()
+  CP_SP.neuralNetworkLateralControl.model.name = CP.carFingerprint
+  CP_SP.neuralNetworkLateralControl.fuzzyFingerprint = True
+  Params().put("CarParamsPersistent", CP.to_bytes())
+  Params().put("CarParamsSPPersistent", CP_SP.to_bytes())
+
   setup_settings_device(click, pm)
   click(278, 852)
   time.sleep(UI_DELAY)
 
-def setup_settings_sunnypilot_mads(click, pm: PubMaster, scroll=None):
+def setup_settings_steering_mads(click, pm: PubMaster, scroll=None):
   Params().put_bool("Mads", True)
 
   setup_settings_device(click, pm)
   click(278, 852)
-  click(970, 455)
+  click(970, 250)
+  time.sleep(UI_DELAY)
+
+def setup_settings_steering_alc(click, pm: PubMaster, scroll=None):
+  setup_settings_device(click, pm)
+  click(278, 852)
+  click(970, 534)
   time.sleep(UI_DELAY)
 
 def setup_settings_trips(click, pm: PubMaster, scroll=None):
@@ -203,13 +244,29 @@ def setup_settings_trips(click, pm: PubMaster, scroll=None):
   click(278, 962)
   time.sleep(UI_DELAY)
 
+def setup_settings_vehicle(click, pm: PubMaster, scroll=None):
+  Params().put("CarPlatformBundle", json.dumps(
+    {
+      "platform": "HONDA_CIVIC_2022",
+      "name": "Honda Civic 2022-24"
+    }
+  ))
+
+  setup_settings_device(click, pm)
+  scroll(-400, 278, 962)
+  click(278, 754)
+  time.sleep(UI_DELAY)
+
 CASES = {
   "homescreen": setup_homescreen,
   "prime": setup_homescreen,
   "pair_device": setup_pair_device,
   "settings_device": setup_settings_device,
+  "settings_network": setup_settings_network,
+  "settings_network_advanced": setup_settings_network_advanced,
   "settings_toggles": setup_settings_toggles,
   "settings_software": setup_settings_software,
+  "settings_firehose": setup_settings_firehose,
   "settings_developer": setup_settings_developer,
   "onroad": setup_onroad,
   "onroad_disengaged": setup_onroad_disengaged,
@@ -224,14 +281,18 @@ CASES = {
   "body": setup_body,
   "offroad_alert": setup_offroad_alert,
   "update_available": setup_update_available,
-  "keyboard": setup_keyboard
+  "keyboard": setup_keyboard,
+  "keyboard_uppercase": setup_keyboard_uppercase
 }
 
 CASES.update({
   "settings_sunnylink": setup_settings_sunnylink,
-  "settings_sunnypilot": setup_settings_sunnypilot,
-  "settings_sunnypilot_mads": setup_settings_sunnypilot_mads,
+  "settings_sunnylink_sponsor_button": setup_settings_sunnylink_sponsor_button,
+  "settings_steering": setup_settings_steering,
+  "settings_steering_mads": setup_settings_steering_mads,
+  "settings_steering_alc": setup_settings_steering_alc,
   "settings_trips": setup_settings_trips,
+  "settings_vehicle": setup_settings_vehicle,
 })
 
 TEST_DIR = pathlib.Path(__file__).parent

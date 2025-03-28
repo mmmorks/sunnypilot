@@ -1,4 +1,4 @@
-from openpilot.common.numpy_fast import clip, interp
+from numpy import clip, interp
 from openpilot.common.realtime import DT_MDL
 from openpilot.selfdrive.controls.lib.drive_helpers import CONTROL_N, MIN_SPEED, MAX_LATERAL_JERK
 from openpilot.sunnypilot.modeld.constants import ModelConstants
@@ -24,4 +24,4 @@ def get_lag_adjusted_curvature(steer_delay, v_ego, psis, curvatures):
                                 current_curvature_desired - max_curvature_rate * DT_MDL,
                                 current_curvature_desired + max_curvature_rate * DT_MDL)
 
-  return safe_desired_curvature
+  return float(safe_desired_curvature)

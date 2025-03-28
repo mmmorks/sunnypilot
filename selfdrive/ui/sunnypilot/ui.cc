@@ -18,7 +18,7 @@ UIStateSP::UIStateSP(QObject *parent) : UIState(parent) {
     "modelV2", "controlsState", "liveCalibration", "radarState", "deviceState",
     "pandaStates", "carParams", "driverMonitoringState", "carState", "driverStateV2",
     "wideRoadCameraState", "managerState", "selfdriveState", "longitudinalPlan",
-    "modelManagerSP", "selfdriveStateSP",
+    "modelManagerSP", "selfdriveStateSP", "longitudinalPlanSP", "backupManagerSP"
   });
 
   // update timer
@@ -46,6 +46,16 @@ DeviceSP::DeviceSP(QObject *parent) : Device(parent) {
 UIStateSP *uiStateSP() {
   static UIStateSP ui_state;
   return &ui_state;
+}
+
+void UIStateSP::setSunnylinkRoles(const std::vector<RoleModel>& roles) {
+  sunnylinkRoles = roles;
+  emit sunnylinkRolesChanged(roles);
+}
+
+void UIStateSP::setSunnylinkDeviceUsers(const std::vector<UserModel>& users) {
+  sunnylinkUsers = users;
+  emit sunnylinkDeviceUsersChanged(users);
 }
 
 DeviceSP *deviceSP() {

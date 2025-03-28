@@ -13,7 +13,7 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.common.params import Params
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.realtime import DT_MDL, config_realtime_process
-from openpilot.common.numpy_fast import interp
+from numpy import interp
 from openpilot.common.transformations.camera import DEVICE_CAMERAS
 from openpilot.common.transformations.model import get_warp_matrix
 from openpilot.system import sentry
@@ -182,7 +182,7 @@ def main(demo=False):
   else:
     CP = messaging.log_from_bytes(params.get("CarParams", block=True), car.CarParams)
 
-  cloudlog.info("modeld got CarParams: %s", CP.carName)
+  cloudlog.info("modeld got CarParams: %s", CP.brand)
 
   # TODO this needs more thought, use .2s extra for now to estimate other delays
   steer_delay = CP.steerActuatorDelay + .2

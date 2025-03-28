@@ -1,7 +1,9 @@
-# Copyright (c) 2021-, Haibin Wen, sunnypilot, and a number of other contributors.
-#
-# This file is part of sunnypilot and is licensed under the MIT License.
-# See the LICENSE.md file in the root directory for more details.
+"""
+Copyright (c) 2021-, Haibin Wen, sunnypilot, and a number of other contributors.
+
+This file is part of sunnypilot and is licensed under the MIT License.
+See the LICENSE.md file in the root directory for more details.
+"""
 
 import json
 import time
@@ -72,13 +74,12 @@ class ModelParser:
     model_bundle.generation = int(value["generation"])
     model_bundle.environment = value["environment"]
     model_bundle.runner = value.get("runner", custom.ModelManagerSP.Runner.snpe)
+    model_bundle.is20hz = value.get("is_20hz", False)
 
     return model_bundle
 
   @staticmethod
   def parse_models(json_data: dict) -> list[custom.ModelManagerSP.ModelBundle]:
-    # TODO-SP: Remove the following filter once we add support for tinygrad model switcher
-    json_data = {k: v for k, v in json_data.items() if v.get("runner", -1) == custom.ModelManagerSP.Runner.snpe}
     return [ModelParser._parse_bundle(key, value) for key, value in json_data.items()]
 
 

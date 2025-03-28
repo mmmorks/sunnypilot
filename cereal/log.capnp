@@ -59,6 +59,7 @@ struct OnroadEvent @0xc4fa6047f024e718 {
     pcmEnable @23;
     pcmDisable @24;
     radarFault @25;
+    radarTempUnavailable @93;
     brakeHold @26;
     parkBrake @27;
     manualRestart @28;
@@ -125,80 +126,6 @@ struct OnroadEvent @0xc4fa6047f024e718 {
     espActive @90;
     personalityChanged @91;
     aeb @92;
-    eventReserved93 @93;
-    eventReserved94 @94;
-    eventReserved95 @95;
-    eventReserved96 @96;
-    eventReserved97 @97;
-    eventReserved98 @98;
-    eventReserved99 @99;
-    eventReserved100 @100;
-    eventReserved101 @101;
-    eventReserved102 @102;
-    eventReserved103 @103;
-    eventReserved104 @104;
-    eventReserved105 @105;
-    eventReserved106 @106;
-    eventReserved107 @107;
-    eventReserved108 @108;
-    eventReserved109 @109;
-    eventReserved110 @110;
-    eventReserved111 @111;
-    eventReserved112 @112;
-    eventReserved113 @113;
-    eventReserved114 @114;
-    eventReserved115 @115;
-    eventReserved116 @116;
-    eventReserved117 @117;
-    eventReserved118 @118;
-    eventReserved119 @119;
-    eventReserved120 @120;
-    eventReserved121 @121;
-    eventReserved122 @122;
-    eventReserved123 @123;
-    eventReserved124 @124;
-    eventReserved125 @125;
-    eventReserved126 @126;
-    eventReserved127 @127;
-    eventReserved128 @128;
-    eventReserved129 @129;
-    eventReserved130 @130;
-    eventReserved131 @131;
-    eventReserved132 @132;
-    eventReserved133 @133;
-    eventReserved134 @134;
-    eventReserved135 @135;
-    eventReserved136 @136;
-    eventReserved137 @137;
-    eventReserved138 @138;
-    eventReserved139 @139;
-    eventReserved140 @140;
-    eventReserved141 @141;
-    eventReserved142 @142;
-    eventReserved143 @143;
-    eventReserved144 @144;
-    eventReserved145 @145;
-    eventReserved146 @146;
-    eventReserved147 @147;
-    eventReserved148 @148;
-    eventReserved149 @149;
-    eventReserved150 @150;
-
-    # sunnypilot
-    lkasEnable @151;
-    lkasDisable @152;
-    manualSteeringRequired @153;
-    manualLongitudinalRequired @154;
-    silentLkasEnable @155;
-    silentLkasDisable @156;
-    silentBrakeHold @157;
-    silentWrongGear @158;
-    silentReverseGear @159;
-    silentDoorOpen @160;
-    silentSeatbeltNotLatched @161;
-    silentParkBrake @162;
-    controlsMismatchLateral @163;
-    hyundaiRadarTracksConfirmed @164;
 
     soundsUnavailableDEPRECATED @47;
   }
@@ -224,6 +151,10 @@ struct InitData {
   gitCommitDate @21 :Text;
   gitBranch @11 :Text;
   gitRemote @13 :Text;
+
+  # this is source commit for prebuilt branches
+  gitSrcCommit @23 :Text;
+  gitSrcCommitDate @24 :Text;
 
   androidProperties @16 :Map(Text, Text);
 
@@ -483,6 +414,7 @@ struct GpsLocationData {
   speedAccuracy @12 :Float32;
 
   hasFix @13 :Bool;
+  satelliteCount @14 :Int8;
 
   enum SensorSource {
     android @0;
@@ -663,7 +595,6 @@ struct PandaState @0xa7649e2575e4591e {
 
   # safety stuff
   controlsAllowed @3 :Bool;
-  controlsAllowedLat @5 :Bool;
   safetyRxInvalid @19 :UInt32;
   safetyTxBlocked @24 :UInt32;
   safetyModel @14 :Car.CarParams.SafetyModel;
@@ -771,6 +702,7 @@ struct PandaState @0xa7649e2575e4591e {
   }
 
   gasInterceptorDetectedDEPRECATED @4 :Bool;
+  startedSignalDetectedDEPRECATED @5 :Bool;
   hasGpsDEPRECATED @6 :Bool;
   gmlanSendErrsDEPRECATED @9 :UInt32;
   fanSpeedRpmDEPRECATED @11 :UInt16;
@@ -797,7 +729,7 @@ struct PeripheralState {
 struct RadarState @0x9a185389d6fdd05f {
   mdMonoTime @6 :UInt64;
   carStateMonoTime @11 :UInt64;
-  radarErrors @12 :List(Car.RadarData.Error);
+  radarErrors @13 :Car.RadarData.Error;
 
   leadOne @3 :LeadData;
   leadTwo @4 :LeadData;
@@ -831,6 +763,7 @@ struct RadarState @0x9a185389d6fdd05f {
   calPercDEPRECATED @9 :Int8;
   canMonoTimesDEPRECATED @10 :List(UInt64);
   cumLagMsDEPRECATED @5 :Float32;
+  radarErrorsDEPRECATED @12 :List(Car.RadarData.ErrorDEPRECATED);
 }
 
 struct LiveCalibrationData {
@@ -2311,6 +2244,11 @@ struct LiveParametersData {
   roll @14 :Float32;
   debugFilterState @16 :FilterState;
 
+  angleOffsetValid @17 :Bool = true;
+  angleOffsetAverageValid @18 :Bool = true;
+  steerRatioValid @19 :Bool = true;
+  stiffnessFactorValid @20 :Bool = true;
+
   yawRateDEPRECATED @7 :Float32;
   filterStateDEPRECATED @15 :LiveLocationKalman.Measurement;
 
@@ -2627,21 +2565,37 @@ struct Event {
     livestreamWideRoadEncodeData @121 :EncodeData;
     livestreamDriverEncodeData @122 :EncodeData;
 
+    # *********** Custom: reserved for forks ***********
+
+    # DO change the name of the field
+    # DON'T change anything after the "@"
     customReservedRawData0 @124 :Data;
     customReservedRawData1 @125 :Data;
     customReservedRawData2 @126 :Data;
 
-    # *********** Custom: reserved for forks ***********
+    # DO change the name of the field and struct
+    # DON'T change the ID (e.g. @107)
+    # DON'T change which struct it points to
     selfdriveStateSP @107 :Custom.SelfdriveStateSP;
     modelManagerSP @108 :Custom.ModelManagerSP;
-    customReserved2 @109 :Custom.CustomReserved2;
-    customReserved3 @110 :Custom.CustomReserved3;
-    customReserved4 @111 :Custom.CustomReserved4;
-    customReserved5 @112 :Custom.CustomReserved5;
-    customReserved6 @113 :Custom.CustomReserved6;
+    longitudinalPlanSP @109 :Custom.LongitudinalPlanSP;
+    onroadEventsSP @110 :List(Custom.OnroadEventSP);
+    carParamsSP @111 :Custom.CarParamsSP;
+    carControlSP @112 :Custom.CarControlSP;
+    backupManagerSP @113 :Custom.BackupManagerSP;
     customReserved7 @114 :Custom.CustomReserved7;
     customReserved8 @115 :Custom.CustomReserved8;
     customReserved9 @116 :Custom.CustomReserved9;
+    customReserved10 @136 :Custom.CustomReserved10;
+    customReserved11 @137 :Custom.CustomReserved11;
+    customReserved12 @138 :Custom.CustomReserved12;
+    customReserved13 @139 :Custom.CustomReserved13;
+    customReserved14 @140 :Custom.CustomReserved14;
+    customReserved15 @141 :Custom.CustomReserved15;
+    customReserved16 @142 :Custom.CustomReserved16;
+    customReserved17 @143 :Custom.CustomReserved17;
+    customReserved18 @144 :Custom.CustomReserved18;
+    customReserved19 @145 :Custom.CustomReserved19;
 
     # *********** legacy + deprecated ***********
     model @9 :Legacy.ModelData; # TODO: rename modelV2 and mark this as deprecated

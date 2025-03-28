@@ -8,13 +8,13 @@
 
 #include "common/watchdog.h"
 #include "common/util.h"
-#include "selfdrive/ui/qt/offroad/driverview.h"
 #include "selfdrive/ui/qt/network/networking.h"
 #include "selfdrive/ui/qt/offroad/settings.h"
 #include "selfdrive/ui/qt/qt_window.h"
 #include "selfdrive/ui/qt/widgets/prime.h"
 #include "selfdrive/ui/qt/widgets/scrollview.h"
 #include "selfdrive/ui/qt/offroad/developer_panel.h"
+#include "selfdrive/ui/qt/offroad/firehose.h"
 
 TogglesPanel::TogglesPanel(SettingsWindow *parent) : ListWidget(parent) {
   // param, title, desc, icon
@@ -26,19 +26,16 @@ TogglesPanel::TogglesPanel(SettingsWindow *parent) : ListWidget(parent) {
       "../assets/img_chffr_wheel.png",
     },
     {
-      "ExperimentalLongitudinalEnabled",
-      tr("openpilot Longitudinal Control (Alpha)"),
-      QString("<b>%1</b><br><br>%2")
-      .arg(tr("WARNING: openpilot longitudinal control is in alpha for this car and will disable Automatic Emergency Braking (AEB)."))
-      .arg(tr("On this car, openpilot defaults to the car's built-in ACC instead of openpilot's longitudinal control. "
-              "Enable this to switch to openpilot longitudinal control. Enabling Experimental mode is recommended when enabling openpilot longitudinal control alpha.")),
-      "../assets/offroad/icon_speed_limit.png",
-    },
-    {
       "ExperimentalMode",
       tr("Experimental Mode"),
       "",
       "../assets/img_experimental_white.svg",
+    },
+    {
+      "DynamicExperimentalControl",
+      tr("Enable Dynamic Experimental Control"),
+      tr("Enable toggle to allow the model to determine when to use sunnypilot ACC or sunnypilot End to End Longitudinal."),
+      "../assets/offroad/icon_blank.png",
     },
     {
       "DisengageOnAccelerator",
@@ -104,11 +101,6 @@ TogglesPanel::TogglesPanel(SettingsWindow *parent) : ListWidget(parent) {
   toggles["ExperimentalMode"]->setActiveIcon("../assets/img_experimental.svg");
 #endif
   toggles["ExperimentalMode"]->setConfirmation(true, true);
-  toggles["ExperimentalLongitudinalEnabled"]->setConfirmation(true, false);
-
-  connect(toggles["ExperimentalLongitudinalEnabled"], &ToggleControl::toggleFlipped, [=]() {
-    updateToggles();
-  });
 }
 
 void TogglesPanel::updateState(const UIState &s) {
@@ -133,7 +125,6 @@ void TogglesPanel::showEvent(QShowEvent *event) {
 
 void TogglesPanel::updateToggles() {
   auto experimental_mode_toggle = toggles["ExperimentalMode"];
-  auto op_long_toggle = toggles["ExperimentalLongitudinalEnabled"];
   const QString e2e_description = QString("%1<br>"
                                           "<h4>%2</h4><br>"
                                           "%3<br>"
@@ -154,10 +145,6 @@ void TogglesPanel::updateToggles() {
     capnp::FlatArrayMessageReader cmsg(aligned_buf.align(cp_bytes.data(), cp_bytes.size()));
     cereal::CarParams::Reader CP = cmsg.getRoot<cereal::CarParams>();
 
-    if (!CP.getExperimentalLongitudinalAvailable() || is_release) {
-      params.remove("ExperimentalLongitudinalEnabled");
-    }
-    op_long_toggle->setVisible(CP.getExperimentalLongitudinalAvailable() && !is_release);
     if (hasLongitudinalControl(CP)) {
       // normal description and toggle
       experimental_mode_toggle->setEnabled(true);
@@ -186,7 +173,6 @@ void TogglesPanel::updateToggles() {
     experimental_mode_toggle->refresh();
   } else {
     experimental_mode_toggle->setDescription(e2e_description);
-    op_long_toggle->setVisible(false);
   }
 }
 
@@ -212,12 +198,7 @@ DevicePanel::DevicePanel(SettingsWindow *parent) : ListWidget(parent) {
 
   auto dcamBtn = new ButtonControl(tr("Driver Camera"), tr("PREVIEW"),
                                    tr("Preview the driver facing camera to ensure that driver monitoring has good visibility. (vehicle must be off)"));
-  connect(dcamBtn, &ButtonControl::clicked, [this, dcamBtn]() {
-    dcamBtn->setEnabled(false);
-    DriverViewDialog driver_view(this);
-    driver_view.exec();
-    dcamBtn->setEnabled(true);
-  });
+  connect(dcamBtn, &ButtonControl::clicked, [=]() { emit showDriverView(); });
   addItem(dcamBtn);
 #endif
 
@@ -261,6 +242,7 @@ DevicePanel::DevicePanel(SettingsWindow *parent) : ListWidget(parent) {
     }
   });
   addItem(translateBtn);
+#endif
 
   QObject::connect(uiState(), &UIState::offroadTransition, [=](bool offroad) {
     for (auto btn : findChildren<ButtonControl *>()) {
@@ -270,6 +252,7 @@ DevicePanel::DevicePanel(SettingsWindow *parent) : ListWidget(parent) {
     }
   });
 
+#ifndef SUNNYPILOT
   // power buttons
   QHBoxLayout *power_layout = new QHBoxLayout();
   power_layout->setSpacing(30);
@@ -353,11 +336,30 @@ void SettingsWindow::showEvent(QShowEvent *event) {
 }
 
 void SettingsWindow::setCurrentPanel(int index, const QString &param) {
+  if (!param.isEmpty()) {
+    // Check if param ends with "Panel" to determine if it's a panel name
+    if (param.endsWith("Panel")) {
+      QString panelName = param;
+      panelName.chop(5); // Remove "Panel" suffix
+      
+      // Find the panel by name
+      for (int i = 0; i < nav_btns->buttons().size(); i++) {
+        bool panel_trimmed = false;
+#ifdef SUNNYPILOT
+        panel_trimmed = nav_btns->buttons()[i]->text().trimmed() == tr(panelName.toStdString().c_str());
+#endif
+        if ((nav_btns->buttons()[i]->text() == tr(panelName.toStdString().c_str())) || panel_trimmed) {
+          index = i;
+          break;
+        }
+      }
+    } else {
+      emit expandToggleDescription(param);
+    }
+  }
+  
   panel_widget->setCurrentIndex(index);
   nav_btns->buttons()[index]->setChecked(true);
-  if (!param.isEmpty()) {
-    emit expandToggleDescription(param);
-  }
 }
 
 SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
@@ -389,6 +391,7 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
   // setup panels
   DevicePanel *device = new DevicePanel(this);
   QObject::connect(device, &DevicePanel::reviewTrainingGuide, this, &SettingsWindow::reviewTrainingGuide);
+  QObject::connect(device, &DevicePanel::showDriverView, this, &SettingsWindow::showDriverView);
 
   TogglesPanel *toggles = new TogglesPanel(this);
   QObject::connect(this, &SettingsWindow::expandToggleDescription, toggles, &TogglesPanel::expandToggleDescription);
@@ -401,6 +404,7 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QFrame(parent) {
     {tr("Network"), networking},
     {tr("Toggles"), toggles},
     {tr("Software"), new SoftwarePanel(this)},
+    {tr("Firehose"), new FirehosePanel(this)},
     {tr("Developer"), new DeveloperPanel(this)},
   };
 

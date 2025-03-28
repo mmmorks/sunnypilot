@@ -117,19 +117,31 @@
     <name>DeveloperPanel</name>
     <message>
         <source>Joystick Debug Mode</source>
-        <translation type="unfinished"></translation>
+        <translation>搖桿調試模式</translation>
     </message>
     <message>
         <source>Longitudinal Maneuver Mode</source>
-        <translation type="unfinished"></translation>
+        <translation>縱向機動模式</translation>
     </message>
     <message>
-        <source>Enables or disables the github runner service.</source>
-        <translation type="unfinished"></translation>
+        <source>openpilot Longitudinal Control (Alpha)</source>
+        <translation>openpilot 縱向控制 (Alpha 版)</translation>
     </message>
     <message>
-        <source>Enable GitHub runner service</source>
-        <translation type="unfinished"></translation>
+        <source>WARNING: openpilot longitudinal control is in alpha for this car and will disable Automatic Emergency Braking (AEB).</source>
+        <translation>警告：此車輛的 openpilot 縱向控制功能目前處於 Alpha 版本，使用此功能將會停用自動緊急煞車（AEB）功能。</translation>
+    </message>
+    <message>
+        <source>On this car, openpilot defaults to the car&apos;s built-in ACC instead of openpilot&apos;s longitudinal control. Enable this to switch to openpilot longitudinal control. Enabling Experimental mode is recommended when enabling openpilot longitudinal control alpha.</source>
+        <translation>在這輛車上，openpilot 預設使用車輛內建的主動巡航控制（ACC），而非 openpilot 的縱向控制。啟用此項功能可切換至 openpilot 的縱向控制。當啟用 openpilot 縱向控制 Alpha 版本時，建議同時啟用實驗性模式（Experimental mode）。</translation>
+    </message>
+    <message>
+        <source>Enable ADB</source>
+        <translation>啟用 ADB</translation>
+    </message>
+    <message>
+        <source>ADB (Android Debug Bridge) allows connecting to your device over USB or over the network. See https://docs.comma.ai/how-to/connect-to-comma for more info.</source>
+        <translation>ADB（Android 調試橋接）允許通過 USB 或網絡連接到您的設備。更多信息請參見 [https://docs.comma.ai/how-to/connect-to-comma](https://docs.comma.ai/how-to/connect-to-comma)。</translation>
     </message>
     <message>
         <source>Hyundai: Enable Radar Tracks</source>
@@ -137,6 +149,26 @@
     </message>
     <message>
         <source>Enable this to attempt to enable radar tracks for Hyundai, Kia, and Genesis models equipped with the supported Mando SCC radar. This allows sunnypilot to use radar data for improved lead tracking and overall longitudinal performance.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable GitHub runner service</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enables or disables the github runner service.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Error Log</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>VIEW</source>
+        <translation type="unfinished">觀看</translation>
+    </message>
+    <message>
+        <source>View the error log for sunnypilot crashes.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -294,16 +326,12 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Language</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Reboot</source>
-        <translation type="unfinished">重新啟動</translation>
-    </message>
-    <message>
         <source>Regulatory</source>
         <translation type="unfinished">法規/監管</translation>
+    </message>
+    <message>
+        <source>Language</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Are you sure you want to review the training guide?</source>
@@ -318,35 +346,67 @@
         <translation type="unfinished">選擇語言</translation>
     </message>
     <message>
+        <source>Reboot</source>
+        <translation type="unfinished">重新啟動</translation>
+    </message>
+    <message>
         <source>Power Off</source>
         <translation type="unfinished">關機</translation>
+    </message>
+    <message>
+        <source>Offroad Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Are you sure you want to exit Always Offroad mode?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Confirm</source>
+        <translation type="unfinished">確認</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to enter Always Offroad mode?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Disengage to Enter Always Offroad Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Exit Always Offroad</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Always Offroad</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>DriveStats</name>
     <message>
         <source>Drives</source>
-        <translation>旅程</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Hours</source>
-        <translation>小時</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>ALL TIME</source>
-        <translation>總共</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>PAST WEEK</source>
-        <translation>上週</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>KM</source>
-        <translation>公里</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Miles</source>
-        <translation>英里</translation>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -365,6 +425,43 @@
     <message>
         <source>CHILL MODE ON</source>
         <translation>輕鬆模式 ON</translation>
+    </message>
+</context>
+<context>
+    <name>FirehosePanel</name>
+    <message>
+        <source>🔥 Firehose Mode 🔥</source>
+        <translation>🔥 訓練資料上傳模式 🔥</translation>
+    </message>
+    <message>
+        <source>openpilot learns to drive by watching humans, like you, drive.
+
+Firehose Mode allows you to maximize your training data uploads to improve openpilot&apos;s driving models. More data means bigger models, which means better Experimental Mode.</source>
+        <translation>openpilot 透過觀察人類駕駛（包括您）來學習如何駕駛。
+
+「訓練資料上傳模式」可讓您最大化上傳訓練數據，以改進 openpilot 的駕駛模型。更多數據代表更強大的模型，也就意味著更優秀的「實驗模式」。</translation>
+    </message>
+    <message>
+        <source>Firehose Mode: ACTIVE</source>
+        <translation>訓練資料上傳模式：啟用中</translation>
+    </message>
+    <message>
+        <source>ACTIVE</source>
+        <translation>啟用中</translation>
+    </message>
+    <message>
+        <source>&lt;span stylesheet=&apos;font-size: 60px; font-weight: bold; color: #e74c3c;&apos;&gt;INACTIVE&lt;/span&gt;: connect to unmetered network</source>
+        <translation>&lt;span stylesheet=&apos;font-size: 60px; font-weight: bold; color: #e74c3c;&apos;&gt;未啟用&lt;/span&gt;：請連接至不限流量的網路</translation>
+    </message>
+    <message>
+        <source>For maximum effectiveness, bring your device inside and connect to a good USB-C adapter and Wi-Fi weekly.&lt;br&gt;&lt;br&gt;Firehose Mode can also work while you&apos;re driving if connected to a hotspot or unlimited SIM card.&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Frequently Asked Questions&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;i&gt;Does it matter how or where I drive?&lt;/i&gt; Nope, just drive as you normally would.&lt;br&gt;&lt;br&gt;&lt;i&gt;Do all of my segments get pulled in Firehose Mode?&lt;/i&gt; No, we selectively pull a subset of your segments.&lt;br&gt;&lt;br&gt;&lt;i&gt;What&apos;s a good USB-C adapter?&lt;/i&gt; Any fast phone or laptop charger should be fine.&lt;br&gt;&lt;br&gt;&lt;i&gt;Does it matter which software I run?&lt;/i&gt; Yes, only upstream openpilot (and particular forks) are able to be used for training.</source>
+        <translation>為了達到最佳效果，請每週將您的裝置帶回室內，並連接至優質的 USB-C 充電器與 Wi-Fi。&lt;br&gt;&lt;br&gt;訓練資料上傳模式在行駛時也能運作，但需連接至行動熱點或使用不限流量的 SIM 卡。&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;常見問題&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;i&gt;我開車的方式或地點有影響嗎？&lt;/i&gt; 不會，請像平常一樣駕駛即可。&lt;br&gt;&lt;br&gt;&lt;i&gt;訓練資料上傳模式會上傳所有的駕駛片段嗎？&lt;/i&gt;不會，我們會選擇性地上傳部分片段。&lt;br&gt;&lt;br&gt;&lt;i&gt;什麼是好的 USB-C 充電器？&lt;/i&gt;任何快速手機或筆電充電器都應該適用。&lt;br&gt;&lt;br&gt;&lt;i&gt;我使用的軟體版本有影響嗎？&lt;/i&gt;有的，只有官方 openpilot（以及特定的分支）可以用於訓練。</translation>
+    </message>
+    <message numerus="yes">
+        <source>&lt;b&gt;%n segment(s)&lt;/b&gt; of your driving is in the training dataset so far.</source>
+        <translation>
+            <numerusform>&lt;b&gt;目前已有 %n 段&lt;/b&gt; 您的駕駛數據被納入訓練資料集。</numerusform>
+        </translation>
     </message>
 </context>
 <context>
@@ -409,6 +506,10 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Note: For vehicles without LFA/LKAS button, disabling this will prevent lateral control engagement.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Unified Engagement Mode (UEM)</source>
         <translation type="unfinished"></translation>
     </message>
@@ -437,10 +538,6 @@
 
 Remain Active: ALC will remain active even after the brake pedal is pressed.
 Pause Steering: ALC will be paused after the brake pedal is manually pressed.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Note: For vehicles without LFA/LKAS button, disabling this will prevent lateral control engagement.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -472,6 +569,17 @@ Pause Steering: ALC will be paused after the brake pedal is manually pressed.</s
     <message>
         <source>Wrong password</source>
         <translation>密碼錯誤</translation>
+    </message>
+</context>
+<context>
+    <name>NetworkingSP</name>
+    <message>
+        <source>Scan</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Scanning...</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -521,6 +629,10 @@ Pause Steering: ALC will be paused after the brake pedal is manually pressed.</s
     <message>
         <source>Device temperature too high. System cooling down before starting. Current internal component temperature: %1</source>
         <translation>裝置溫度過高。系統正在冷卻中，等冷卻完畢後才會啟動。目前內部組件溫度：%1</translation>
+    </message>
+    <message>
+        <source>sunnypilot is now in Always Offroad mode. sunnypilot won&apos;t start until Always Offroad mode is disabled. Go to &quot;Settings&quot; -&gt; &quot;Device&quot; to exit Always Offroad mode.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -579,6 +691,10 @@ Pause Steering: ALC will be paused after the brake pedal is manually pressed.</s
         <source>Bookmark connect.comma.ai to your home screen to use it like an app</source>
         <translation>將 connect.comma.ai 加入您的主螢幕，以便像手機 App 一樣使用它</translation>
     </message>
+    <message>
+        <source>Please connect to Wi-Fi to complete initial pairing</source>
+        <translation>請連接 Wi-Fi 以完成初始配對</translation>
+    </message>
 </context>
 <context>
     <name>ParamControl</name>
@@ -594,12 +710,67 @@ Pause Steering: ALC will be paused after the brake pedal is manually pressed.</s
 <context>
     <name>ParamControlSP</name>
     <message>
-        <source>Cancel</source>
-        <translation>取消</translation>
+        <source>Enable</source>
+        <translation type="unfinished">啟用</translation>
     </message>
     <message>
-        <source>Enable</source>
-        <translation>啟用</translation>
+        <source>Cancel</source>
+        <translation type="unfinished">取消</translation>
+    </message>
+</context>
+<context>
+    <name>PlatformSelector</name>
+    <message>
+        <source>Vehicle</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>SEARCH</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Search your vehicle</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enter model year (e.g., 2021) and model name (Toyota Corolla):</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>SEARCHING</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>REMOVE</source>
+        <translation type="unfinished">移除</translation>
+    </message>
+    <message>
+        <source>This setting will take effect immediately.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This setting will take effect once the device enters offroad state.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Vehicle Selector</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Confirm</source>
+        <translation type="unfinished">確認</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation type="unfinished">取消</translation>
+    </message>
+    <message>
+        <source>No vehicles found for query: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a vehicle</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -746,46 +917,58 @@ This may take up to a minute.</source>
     </message>
     <message>
         <source>Developer</source>
-        <translation type="unfinished"></translation>
+        <translation>開發人員</translation>
+    </message>
+    <message>
+        <source>Firehose</source>
+        <translation>訓練上傳</translation>
     </message>
 </context>
 <context>
     <name>SettingsWindowSP</name>
     <message>
         <source>×</source>
-        <translation>×</translation>
+        <translation type="unfinished">×</translation>
     </message>
     <message>
         <source>Device</source>
-        <translation>裝置</translation>
+        <translation type="unfinished">裝置</translation>
     </message>
     <message>
         <source>Network</source>
-        <translation>網路</translation>
-    </message>
-    <message>
-        <source>Toggles</source>
-        <translation>設定</translation>
-    </message>
-    <message>
-        <source>Software</source>
-        <translation>軟體</translation>
-    </message>
-    <message>
-        <source>Developer</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>sunnypilot</source>
-        <translation>sunnypilot</translation>
+        <translation type="unfinished">網路</translation>
     </message>
     <message>
         <source>sunnylink</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Toggles</source>
+        <translation type="unfinished">設定</translation>
+    </message>
+    <message>
+        <source>Software</source>
+        <translation type="unfinished">軟體</translation>
+    </message>
+    <message>
+        <source>sunnypilot</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Trips</source>
         <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Vehicle</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Developer</source>
+        <translation type="unfinished">開發人員</translation>
+    </message>
+    <message>
+        <source>Firehose</source>
+        <translation type="unfinished">訓練上傳</translation>
     </message>
 </context>
 <context>
@@ -1078,35 +1261,15 @@ This may take up to a minute.</source>
 <context>
     <name>SoftwarePanelSP</name>
     <message>
+        <source>Current Model</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>SELECT</source>
         <translation type="unfinished">選取</translation>
     </message>
     <message>
-        <source>We STRONGLY suggest you to reset calibration. Would you like to do that now?</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Reset Calibration</source>
-        <translation type="unfinished">重設校準</translation>
-    </message>
-    <message>
-        <source>Warning: You are on a metered connection!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Continue</source>
-        <translation type="unfinished">繼續</translation>
-    </message>
-    <message>
-        <source>on Metered</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>%1 model [%2] pending...</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Current Model</source>
+        <source>No custom model selected!</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1126,22 +1289,6 @@ This may take up to a minute.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>%1 model [%2] download failed</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Select a Model</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Fetching models...</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Model download has started in the background.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>%1 model [%2] %3</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1158,16 +1305,64 @@ This may take up to a minute.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>%1 model [%2] download failed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 model [%2] pending...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fetching models...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Use Default</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>No custom model selected!</source>
+        <source>Select a Model</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Default</source>
         <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Model download has started in the background.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>We STRONGLY suggest you to reset calibration.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Would you like to do that now?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reset Calibration</source>
+        <translation type="unfinished">重設校準</translation>
+    </message>
+    <message>
+        <source>Driving Model Selector</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Warning: You are on a metered connection!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation type="unfinished">繼續</translation>
+    </message>
+    <message>
+        <source>on Metered</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation type="unfinished">取消</translation>
     </message>
 </context>
 <context>
@@ -1227,11 +1422,11 @@ This may take up to a minute.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>N/A</source>
-        <translation type="unfinished">無法使用</translation>
+        <source>🎉Welcome back! We&apos;re excited to see you&apos;ve enabled sunnylink again! 🚀</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>🎉Welcome back! We&apos;re excited to see you&apos;ve enabled sunnylink again! 🚀</source>
+        <source>👋Not going to lie, it&apos;s sad to see you disabled sunnylink 😢, but we&apos;ll be here when you&apos;re ready to come back 🎉.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1239,16 +1434,95 @@ This may take up to a minute.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>👋Not going to lie, it&apos;s sad to see you disabled sunnylink 😢, but we&apos;ll be here when you&apos;re ready to come back 🎉.</source>
+        <source>N/A</source>
+        <translation type="unfinished">無法使用</translation>
+    </message>
+    <message>
+        <source>Sponsor Status</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>SPONSOR</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Become a sponsor of sunnypilot to get early access to sunnylink features when they become available.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pair GitHub Account</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>PAIR</source>
+        <translation type="unfinished">配對</translation>
+    </message>
+    <message>
+        <source>Pair your GitHub account to grant your device sponsor benefits, including API access on sunnylink.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>sunnylink Dongle ID not found. This may be due to weak internet connection or sunnylink registration issue. Please reboot and try again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Not Sponsor</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Paired</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Not Paired</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>THANKS ♥</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SunnylinkSponsorPopup</name>
+    <message>
+        <source>Scan the QR code to login to your GitHub account</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Follow the prompts to complete the pairing process</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Re-enter the &quot;sunnylink&quot; panel to verify sponsorship status</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>If sponsorship status was not updated, please contact a moderator on Discord at https://discord.gg/sunnypilot</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Scan the QR code to visit sunnyhaibin&apos;s GitHub Sponsors page</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose your sponsorship tier and confirm your support</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Join our community on Discord at https://discord.gg/sunnypilot and reach out to a moderator to confirm your sponsor status</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pair your GitHub account</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Early Access: Become a sunnypilot Sponsor</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>SunnypilotPanel</name>
-    <message>
-        <source>Customize MADS</source>
-        <translation type="unfinished"></translation>
-    </message>
     <message>
         <source>Modular Assistive Driving System (MADS)</source>
         <translation type="unfinished"></translation>
@@ -1257,24 +1531,28 @@ This may take up to a minute.</source>
         <source>Enable the beloved MADS feature. Disable toggle to revert back to stock openpilot engagement/disengagement.</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Customize MADS</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>TermsPage</name>
-    <message>
-        <source>Terms &amp; Conditions</source>
-        <translation>條款和條件</translation>
-    </message>
     <message>
         <source>Decline</source>
         <translation>拒絕</translation>
     </message>
     <message>
-        <source>Scroll to accept</source>
-        <translation>滑動至頁尾接受條款</translation>
-    </message>
-    <message>
         <source>Agree</source>
         <translation>接受</translation>
+    </message>
+    <message>
+        <source>Welcome to openpilot</source>
+        <translation>歡迎使用 openpilot</translation>
+    </message>
+    <message>
+        <source>You must accept the Terms and Conditions to use openpilot. Read the latest terms at &lt;span style=&apos;color: #465BEA;&apos;&gt;https://comma.ai/terms&lt;/span&gt; before continuing.</source>
+        <translation>您必須接受《條款與條件》才能使用 openpilot。在繼續之前，請先閱讀最新條款：&lt;span style=&apos;color: #465BEA;&apos;&gt;https://comma.ai/terms&lt;/span&gt;。</translation>
     </message>
 </context>
 <context>
@@ -1344,18 +1622,6 @@ This may take up to a minute.</source>
         <translation>openpilot 縱向控制可能會在未來的更新中提供。</translation>
     </message>
     <message>
-        <source>openpilot Longitudinal Control (Alpha)</source>
-        <translation>openpilot 縱向控制 (Alpha 版)</translation>
-    </message>
-    <message>
-        <source>WARNING: openpilot longitudinal control is in alpha for this car and will disable Automatic Emergency Braking (AEB).</source>
-        <translation>警告：此車輛的 openpilot 縱向控制功能目前處於 Alpha 版本，使用此功能將會停用自動緊急煞車（AEB）功能。</translation>
-    </message>
-    <message>
-        <source>On this car, openpilot defaults to the car&apos;s built-in ACC instead of openpilot&apos;s longitudinal control. Enable this to switch to openpilot longitudinal control. Enabling Experimental mode is recommended when enabling openpilot longitudinal control alpha.</source>
-        <translation>在這輛車上，openpilot 預設使用車輛內建的主動巡航控制（ACC），而非 openpilot 的縱向控制。啟用此項功能可切換至 openpilot 的縱向控制。當啟用 openpilot 縱向控制 Alpha 版本時，建議同時啟用實驗性模式（Experimental mode）。</translation>
-    </message>
-    <message>
         <source>Aggressive</source>
         <translation>積極</translation>
     </message>
@@ -1399,6 +1665,14 @@ This may take up to a minute.</source>
         <source>Enable driver monitoring even when openpilot is not engaged.</source>
         <translation>即使在openpilot未激活時也啟用駕駛監控。</translation>
     </message>
+    <message>
+        <source>Enable Dynamic Experimental Control</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable toggle to allow the model to determine when to use sunnypilot ACC or sunnypilot End to End Longitudinal.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>Updater</name>
@@ -1438,24 +1712,16 @@ This may take up to a minute.</source>
 <context>
     <name>WiFiPromptWidget</name>
     <message>
-        <source>Setup Wi-Fi</source>
-        <translation>設置 Wi-Fi 連接</translation>
+        <source>Open</source>
+        <translation>開啟</translation>
     </message>
     <message>
-        <source>Connect to Wi-Fi to upload driving data and help improve openpilot</source>
-        <translation>請連接至 Wi-Fi 傳駕駛數據以協助改進 openpilot</translation>
+        <source>Maximize your training data uploads to improve openpilot&apos;s driving models.</source>
+        <translation>最大化您的訓練數據上傳，以改善 openpilot 的駕駛模型。</translation>
     </message>
     <message>
-        <source>Open Settings</source>
-        <translation>開啟設置</translation>
-    </message>
-    <message>
-        <source>Ready to upload</source>
-        <translation>準備好上傳</translation>
-    </message>
-    <message>
-        <source>Training data will be pulled periodically while your device is on Wi-Fi</source>
-        <translation>訓練數據將定期經過 Wi-Fi 上傳</translation>
+        <source>&lt;span style=&apos;font-family: &quot;Noto Color Emoji&quot;;&apos;&gt;🔥&lt;/span&gt; Firehose Mode &lt;span style=&apos;font-family: Noto Color Emoji;&apos;&gt;🔥&lt;/span&gt;</source>
+        <translation>&lt;span style=&apos;font-family: &quot;Noto Color Emoji&quot;;&apos;&gt;🔥&lt;/span&gt; 訓練資料上傳模式 &lt;span style=&apos;font-family: Noto Color Emoji;&apos;&gt;🔥&lt;/span&gt;</translation>
     </message>
 </context>
 <context>
