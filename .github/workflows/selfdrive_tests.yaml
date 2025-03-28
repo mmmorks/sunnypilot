@@ -173,8 +173,8 @@ jobs:
       - name: 'Prepare artifact'
         run: |
           mkdir -p "cereal/messaging/tests/cereal_validations"
-          cp cereal/messaging/tests/validate_sp_cereal_upstream.py "cereal/messaging/tests/cereal_validations"
-          cp schema_instances.bin "${{ env.OUTPUT_DIR }}/cereal/messaging/tests/cereal_validations"
+          cp cereal/messaging/tests/validate_sp_cereal_upstream.py "cereal/messaging/tests/cereal_validations/validate_sp_cereal_upstream.py"
+          cp schema_instances.bin "cereal/messaging/tests/cereal_validations/schema_instances.bin"
       - name: 'Upload Artifact'
         uses: actions/upload-artifact@v4
         with:
