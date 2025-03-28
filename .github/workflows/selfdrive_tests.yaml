@@ -155,7 +155,7 @@ jobs:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         
   generate_cereal_artifact:
-    name: Generate Validation Artifacts
+    name: Generate cereal validation artifacts
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -181,7 +181,7 @@ jobs:
           path: cereal/messaging/tests/cereal_validations
 
   validate_cereal_with_upstream:
-    name: Validate with Upstream
+    name: Validate cereal with Upstream
     runs-on: ubuntu-24.04
     needs: generate_cereal_artifact
     steps:
