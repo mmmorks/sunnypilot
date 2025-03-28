@@ -200,6 +200,7 @@ jobs:
           path: cereal/messaging/tests/cereal_validations
       - name: 'Run the validation'
         run: |
+          chmod +x cereal/messaging/tests/cereal_validations/validate_sp_cereal_upstream.py
           ${{ env.RUN }} "cereal/messaging/tests/cereal_validations/validate_sp_cereal_upstream.py -r -f cereal/messaging/tests/cereal_validations/schema_instances.bin"
   
   process_replay:
