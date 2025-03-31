@@ -205,6 +205,7 @@ class Sample():
   long_actuator_delay: float = np.nan
   t_cs: float = np.nan
   t_cc: float = np.nan
+  t_co: float = np.nan
   t_llk: float = np.nan
   t_lp: float = np.nan
   t_lat_p: float = np.nan
@@ -275,14 +276,16 @@ def collect(lr):
       elif msg.which() == 'carControl':
         s.t_cc = msg.logMonoTime
         s.enabled = msg.carControl.enabled
-        if hasattr(msg.carControl, "actuatorsOutput"):
-          s.steer_cmd_out = msg.carControl.actuatorsOutput.steer
-          s.gas_cmd_out = msg.carControl.actuatorsOutput.gas
-          s.brake_cmd_out = msg.carControl.actuatorsOutput.brake
-        s.steer_cmd = msg.carControl.actuators.steer
+        s.steer_cmd = msg.carControl.actuators.torque
         s.gas_cmd = msg.carControl.actuators.gas
         s.brake_cmd = msg.carControl.actuators.brake
         s.desired_accel = msg.carControl.actuators.accel
+        continue
+      elif msg.which() == 'carOutput':
+        s.t_co = msg.logMonoTime
+        s.steer_cmd_out = msg.carOutput.actuatorsOutput.torque
+        s.gas_cmd_out = msg.carOutput.actuatorsOutput.gas
+        s.brake_cmd_out = msg.carOutput.actuatorsOutput.brake
         continue
       elif msg.which() == 'livePose':
         s.t_llk = msg.logMonoTime
@@ -297,9 +300,10 @@ def collect(lr):
       # assert all messages have been received
       valid = not np.isnan(s.v_ego) and \
               not np.isnan(s.t_llk) and \
+              not np.isnan(s.t_co) and \
               not np.isnan(s.t_cc) and \
-              VM is not None and \
-              not np.isnan(s.t_lp)
+              not np.isnan(s.t_lp) and \
+              VM is not None
 
       #print(f"{s.v_ego} {s.t_llk} {s.t_cc} {VM is not None} {s.t_lp}")
 
@@ -335,7 +339,8 @@ def collect(lr):
           t_field_dict = {
             "t_cs": ["v_ego", "a_ego", "steer_angle", "steer_rate", "torque_eps", "torque_driver", "gas", "gas_pressed", "brake", "brake_pressed"],
             "t_lp": ["steer_offset", "steer_offset_average", "roll", "stiffnessFactor", "steerRatio"],
-            "t_cc": ["enabled", "steer_cmd_out", "gas_cmd_out", "brake_cmd_out", "steer_cmd", "gas_cmd", "brake_cmd", "desired_accel"],
+            "t_cc": ["enabled", "steer_cmd", "gas_cmd", "brake_cmd", "desired_accel"],
+            "t_co": ["steer_cmd_out", "gas_cmd_out", "brake_cmd_out"]
             }
           for t_field, field_list in t_field_dict.items():
             t_field_list = [getattr(s, t_field) for s in sample_deque]
