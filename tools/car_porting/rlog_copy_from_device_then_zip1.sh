@@ -10,7 +10,7 @@
 
 #=============================================
 # MODIFY THESE
-diroutbase="/Users/john/Downloads/rlogs"
+diroutbase="/Users/$USER/Downloads/rlogs"
 # EACH LINE OF `device_car_list` is an ssh host followed by a subfolder name to be created within `diroutbase`
 device_car_list=(
 "comma genesis"
@@ -150,4 +150,3 @@ find "$diroutbase" -not -path '*/\.*' -type f -name "*rlog" -print -exec zstd --
 
 
 echo "Done"
-

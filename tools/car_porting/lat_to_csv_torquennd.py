@@ -341,7 +341,7 @@ def compute_adjusted_steer_torque(samples, eps_scale = 1.0, driver_scale = 1.0, 
     steer_cmd_check_func = lambda s, me, md: abs(s.torque_driver ) < 100 \
                                               and (abs(s.steer_cmd) / max(0.001, abs(s.lateral_accel)) > 0.02)
     # torque_func_eps = lambda s,e,d: s.torque_driver * d
-  elif samples[0].car_make in ['hyundai']:
+  elif samples[0].car_make in ['hyundai', 'genesis']:
     steer_cmd_check_func = lambda s, me, md: abs(s.torque_driver ) < 50 \
                                               and (abs(s.steer_cmd) / max(0.001, abs(s.lateral_accel)) > 0.02)
     if samples[0].car_fp in ['SONATA 2020']:
