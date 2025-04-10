@@ -519,8 +519,9 @@ def load(path, route=None, preprocess=False, dongleid=False, outpath=""):
           # we're on device going through rlogs
           if preprocess and dongleid:
             dongle_id = dongleid
-            rlog_path = "/Users/john/Downloads/latfiles_batch"
-            rlog_log_path = "/Users/john/Downloads/latfiles.txt" # prevents rerunning rlogs
+            home = os.path.expanduser('~')
+            rlog_path = os.path.join(home, 'Downloads', 'latfiles_batch')
+            rlog_log_path = os.path.join(home, 'Downloads', 'latfiles.txt') # prevents rerunning rlogs
           else:
             with open("/data/params/d/DongleId","r") as df:
               dongle_id = df.read()

@@ -1203,7 +1203,8 @@ def pickle_files_to_csv(input_dir, check_modified=True, print_stats=False, save_
     return model
 
 # Example usage:
-input_dir = '/Users/john/Downloads/rlogs/output/'
+home = os.path.expanduser('~')
+input_dir = os.path.join(home, 'Downloads', 'rlogs', 'output')
 # compile a regex pattern to match valid subdirectory names
 pattern = re.compile(r'^[\-A-Z0-9a-z() ]+$')
 def has_upper_word(text):
