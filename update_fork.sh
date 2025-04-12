@@ -5,6 +5,7 @@ set -e  # Exit immediately if a command exits with a non-zero status
 LOCAL_BRANCH="staging-merged"  # Your local branch name
 UPSTREAM_REMOTE="upstream"    # The name of your upstream remote
 UPSTREAM_BRANCH="staging-c3-new"  # The upstream branch to track
+ORIGIN_REMOTE="origin"        # Your fork remote
 TEMP_BRANCH="temp-save-changes"  # Temporary branch to store your changes
 
 # Print status messages in color
@@ -74,7 +75,9 @@ else
             echo -e "  git cherry-pick --continue"
             echo -e "  git branch -D $LOCAL_BRANCH"
             echo -e "  git branch -m new-base $LOCAL_BRANCH"
+            echo -e "  git branch --set-upstream-to=$ORIGIN_REMOTE/$LOCAL_BRANCH $LOCAL_BRANCH"
             echo -e "  git branch -D $TEMP_BRANCH"
+            echo -e "  git push $ORIGIN_REMOTE $LOCAL_BRANCH --force"
             exit 1
         fi
     done
@@ -82,6 +85,14 @@ else
     # Replace the old branch with our new one
     git branch -D $LOCAL_BRANCH
     git branch -m new-base $LOCAL_BRANCH
+    
+    # Set up proper tracking with origin
+    echo -e "${YELLOW}Setting up tracking with $ORIGIN_REMOTE/$LOCAL_BRANCH...${NC}"
+    git branch --set-upstream-to=$ORIGIN_REMOTE/$LOCAL_BRANCH $LOCAL_BRANCH || {
+        echo -e "${YELLOW}Remote branch $ORIGIN_REMOTE/$LOCAL_BRANCH doesn't exist yet.${NC}"
+        echo -e "${YELLOW}After pushing, you can set tracking with:${NC}"
+        echo -e "  git branch --set-upstream-to=$ORIGIN_REMOTE/$LOCAL_BRANCH $LOCAL_BRANCH"
+    }
 fi
 
 # Clean up
@@ -90,3 +101,8 @@ git branch -D $TEMP_BRANCH 2>/dev/null || true
 
 echo -e "${GREEN}Update complete! Your $LOCAL_BRANCH branch now contains your changes on top of the latest $UPSTREAM_REMOTE/$UPSTREAM_BRANCH.${NC}"
 echo -e "${GREEN}The first commit from your original branch was skipped to avoid conflicts.${NC}"
+
+# Provide instructions for pushing to origin
+echo -e "${YELLOW}To push these changes to your fork, run:${NC}"
+echo -e "  git push $ORIGIN_REMOTE $LOCAL_BRANCH --force"
+echo -e "${YELLOW}Note: --force is required because the branch history has been rewritten.${NC}"
