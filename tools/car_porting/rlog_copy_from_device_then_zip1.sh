@@ -14,6 +14,7 @@ diroutbase="/Users/john/Downloads/rlogs"
 # EACH LINE OF `device_car_list` is an ssh host followed by a subfolder name to be created within `diroutbase`
 device_car_list=(
 "comma genesis"
+"comma3 honda"
 )
 # ALSO MODIFY PASSWORD NEAR BOTTOM OF SCRIPT
 #=============================================
