@@ -276,7 +276,21 @@ def collect(lr):
       elif msg.which() == 'carControl':
         s.t_cc = msg.logMonoTime
         s.enabled = msg.carControl.enabled
-        s.steer_cmd = msg.carControl.actuators.torque
+
+        s.t_co = s.t_cc  # Use the same timestamp for carOutput
+        if hasattr(msg.carControl, "actuatorsOutput"):
+          # Old format: actuator outputs in carControl
+          s.t_co = s.t_cc  # Use the same timestamp for carOutput
+          s.steer_cmd_out = msg.carControl.actuatorsOutput.steer
+          s.gas_cmd_out = msg.carControl.actuatorsOutput.gas
+          s.brake_cmd_out = msg.carControl.actuatorsOutput.brake
+
+        # Handle steer command field (steer in old format, torque in new format)
+        if hasattr(msg.carControl.actuators, "torque"):
+          s.steer_cmd = msg.carControl.actuators.torque
+        else:
+          s.steer_cmd = msg.carControl.actuators.steer
+
         s.gas_cmd = msg.carControl.actuators.gas
         s.brake_cmd = msg.carControl.actuators.brake
         s.desired_accel = msg.carControl.actuators.accel
