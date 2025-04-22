@@ -5,17 +5,18 @@ This file is part of sunnypilot and is licensed under the MIT License.
 See the LICENSE.md file in the root directory for more details.
 """
 
-from cereal import car, log, custom
+from cereal import log, custom
 
+from opendbc.car import structs
 from opendbc.car.hyundai.values import HyundaiFlags
-from openpilot.sunnypilot.mads.helpers import MadsSteeringModeOnBrake, read_steering_mode_param
 from openpilot.sunnypilot.mads.state import StateMachine, GEARS_ALLOW_PAUSED_SILENT
 
 State = custom.ModularAssistiveDrivingSystem.ModularAssistiveDrivingSystemState
-ButtonType = car.CarState.ButtonEvent.Type
+ButtonType = structs.CarState.ButtonEvent.Type
 EventName = log.OnroadEvent.EventName
 EventNameSP = custom.OnroadEventSP.EventName
-SafetyModel = car.CarParams.SafetyModel
+GearShifter = structs.CarState.GearShifter
+SafetyModel = structs.CarParams.SafetyModel
 
 SET_SPEED_BUTTONS = (ButtonType.accelCruise, ButtonType.resumeCruise, ButtonType.decelCruise, ButtonType.setCruise)
 IGNORED_SAFETY_MODES = (SafetyModel.silent, SafetyModel.noOutput)
@@ -42,14 +43,14 @@ class ModularAssistiveDrivingSystem:
     # read params on init
     self.enabled_toggle = self.params.get_bool("Mads")
     self.main_enabled_toggle = self.params.get_bool("MadsMainCruiseAllowed")
-    self.steering_mode_on_brake = read_steering_mode_param(self.params)
+    self.pause_lateral_on_brake_toggle = self.params.get_bool("MadsPauseLateralOnBrake")
     self.unified_engagement_mode = self.params.get_bool("MadsUnifiedEngagementMode")
 
   def read_params(self):
     self.main_enabled_toggle = self.params.get_bool("MadsMainCruiseAllowed")
     self.unified_engagement_mode = self.params.get_bool("MadsUnifiedEngagementMode")
 
-  def update_events(self, CS: car.CarState):
+  def update_events(self, CS: structs.CarState):
     def update_unified_engagement_mode():
       uem_blocked = self.enabled or (self.selfdrive.enabled and self.selfdrive.enabled_prev)
       if (self.unified_engagement_mode and uem_blocked) or not self.unified_engagement_mode:
@@ -71,7 +72,7 @@ class ModularAssistiveDrivingSystem:
       if self.events.has(EventName.seatbeltNotLatched):
         replace_event(EventName.seatbeltNotLatched, EventNameSP.silentSeatbeltNotLatched)
         transition_paused_state()
-      if self.events.has(EventName.wrongGear):
+      if self.events.has(EventName.wrongGear) and (CS.standstill or CS.gearShifter == GearShifter.reverse):
         replace_event(EventName.wrongGear, EventNameSP.silentWrongGear)
         transition_paused_state()
       if self.events.has(EventName.reverseGear):
@@ -84,11 +85,11 @@ class ModularAssistiveDrivingSystem:
         replace_event(EventName.parkBrake, EventNameSP.silentParkBrake)
         transition_paused_state()
 
-      if self.steering_mode_on_brake == MadsSteeringModeOnBrake.PAUSE:
+      if self.pause_lateral_on_brake_toggle:
         if CS.brakePressed:
           transition_paused_state()
 
-      if not (self.steering_mode_on_brake == MadsSteeringModeOnBrake.PAUSE and CS.brakePressed) and \
+      if not (self.pause_lateral_on_brake_toggle and CS.brakePressed) and \
          not self.events_sp.contains_in_list(GEARS_ALLOW_PAUSED_SILENT):
         if self.state_machine.state == State.paused:
           self.events_sp.add(EventNameSP.silentLkasEnable)
@@ -124,20 +125,17 @@ class ModularAssistiveDrivingSystem:
       if self.selfdrive.CS_prev.cruiseState.available:
         self.events_sp.add(EventNameSP.lkasDisable)
 
-    if self.steering_mode_on_brake == MadsSteeringModeOnBrake.DISENGAGE:
-      # Disable on rising edge of accelerator or brake. Also disable on brake when speed > 0
-      if (CS.brakePressed and (not self.selfdrive.CS_prev.brakePressed or not CS.standstill)) or \
-         (CS.regenBraking and (not self.selfdrive.CS_prev.regenBraking or not CS.standstill)):
-        self.events_sp.add(EventNameSP.lkasDisable)
-
     self.events.remove(EventName.pcmDisable)
     self.events.remove(EventName.buttonCancel)
     self.events.remove(EventName.pedalPressed)
     self.events.remove(EventName.wrongCruiseMode)
-    if not any(be.type in SET_SPEED_BUTTONS for be in CS.buttonEvents):
+    if any(be.type in SET_SPEED_BUTTONS for be in CS.buttonEvents):
+      if self.events.has(EventName.wrongCarMode):
+        replace_event(EventName.wrongCarMode, EventNameSP.wrongCarModeAlertOnly)
+    else:
       self.events.remove(EventName.wrongCarMode)
 
-  def update(self, CS: car.CarState):
+  def update(self, CS: structs.CarState):
     if not self.enabled_toggle:
       return
 
