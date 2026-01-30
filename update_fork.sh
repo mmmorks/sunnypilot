@@ -4,7 +4,7 @@ set -e  # Exit immediately if a command exits with a non-zero status
 # Configuration
 LOCAL_BRANCH="staging-merged"  # Your local branch name
 UPSTREAM_REMOTE="upstream"    # The name of your upstream remote
-UPSTREAM_BRANCH="staging-c3-new"  # The upstream branch to track
+UPSTREAM_BRANCH="staging"  # The upstream branch to track
 ORIGIN_REMOTE="origin"        # Your fork remote
 TEMP_BRANCH="temp-save-changes"  # Temporary branch to store your changes
 
