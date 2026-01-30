@@ -5,6 +5,7 @@ set -e  # Exit immediately if a command exits with a non-zero status
 LOCAL_BRANCH="staging-merged"  # Your local branch name
 UPSTREAM_REMOTE="upstream"    # The name of your upstream remote
 UPSTREAM_BRANCH="staging"  # The upstream branch to track
+OLD_UPSTREAM_BRANCH="staging-c3-new"  # Previous upstream branch (for identifying custom commits)
 ORIGIN_REMOTE="origin"        # Your fork remote
 TEMP_BRANCH="temp-save-changes"  # Temporary branch to store your changes
 
@@ -81,16 +82,16 @@ fi
 # Cherry-pick our custom commits
 echo -e "${YELLOW}Identifying and applying custom commits on top of new base...${NC}"
 
-# Get a list of commits that are in our branch but not in upstream
-# Skip the first commit which is known to conflict
-echo -e "${YELLOW}Skipping the first commit (which conflicts) and applying the rest...${NC}"
+# Get a list of commits that are in our branch but not in the old upstream branch
+# This ensures we only get our custom commits, not upstream commits that may differ between branches
+echo -e "${YELLOW}Identifying custom commits to apply...${NC}"
 
-# Get all custom commits
-CUSTOM_COMMITS=$(git log --format="%H" $TEMP_BRANCH --not --remotes=$UPSTREAM_REMOTE)
+# Get all custom commits by comparing against the old upstream branch
+CUSTOM_COMMITS=$(git log --format="%H" $TEMP_BRANCH --not $UPSTREAM_REMOTE/$OLD_UPSTREAM_BRANCH)
 
-# Convert to array and skip the first commit (which is the oldest when reversed)
+# Convert to array (oldest first)
 COMMIT_ARRAY=($(echo "$CUSTOM_COMMITS" | tac))
-COMMITS_TO_APPLY=("${COMMIT_ARRAY[@]:1}")  # Skip the first element
+COMMITS_TO_APPLY=("${COMMIT_ARRAY[@]}")  # Apply all commits
 
 # Filter out commits that have already been applied (by checking commit messages)
 REMAINING_COMMITS=()
@@ -107,7 +108,7 @@ COMMITS_TO_APPLY=("${REMAINING_COMMITS[@]}")
 
 # Check if we have any commits to apply
 if [ ${#COMMITS_TO_APPLY[@]} -eq 0 ]; then
-    echo -e "${YELLOW}No custom commits found to apply (after skipping the first one).${NC}"
+    echo -e "${YELLOW}No custom commits found to apply.${NC}"
     echo -e "${YELLOW}Using the upstream branch directly.${NC}"
     
     # Replace the old branch with our new one
@@ -115,7 +116,7 @@ if [ ${#COMMITS_TO_APPLY[@]} -eq 0 ]; then
     git branch -D $LOCAL_BRANCH
     git branch -m new-base $LOCAL_BRANCH
 else
-    # Apply our custom commits in order (oldest first, but skipping the first commit)
+    # Apply our custom commits in order (oldest first)
     for COMMIT in "${COMMITS_TO_APPLY[@]}"; do
         echo -e "${YELLOW}Applying commit: $(git log -1 --pretty=format:"%s" $COMMIT)${NC}"
         if ! git cherry-pick $COMMIT; then
@@ -144,7 +145,6 @@ echo -e "${YELLOW}Cleaning up temporary branch...${NC}"
 git branch -D $TEMP_BRANCH 2>/dev/null || true
 
 echo -e "${GREEN}Update complete! Your $LOCAL_BRANCH branch now contains your changes on top of the latest $UPSTREAM_REMOTE/$UPSTREAM_BRANCH.${NC}"
-echo -e "${GREEN}The first commit from your original branch was skipped to avoid conflicts.${NC}"
 
 # Provide instructions for pushing to origin
 echo -e "${YELLOW}To push these changes to your fork, run:${NC}"
