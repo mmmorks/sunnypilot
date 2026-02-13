@@ -119,11 +119,17 @@ else
     # Apply our custom commits in order (oldest first)
     for COMMIT in "${COMMITS_TO_APPLY[@]}"; do
         echo -e "${YELLOW}Applying commit: $(git log -1 --pretty=format:"%s" $COMMIT)${NC}"
-        if ! git cherry-pick $COMMIT; then
-            echo -e "${RED}Cherry-pick failed for commit $COMMIT${NC}"
-            echo -e "${YELLOW}Resolve conflicts manually, then run this script again to continue.${NC}"
-            echo -e "${YELLOW}The script will detect the resolved state and continue with remaining commits.${NC}"
-            exit 1
+        if ! git cherry-pick $COMMIT 2>&1; then
+            # Check if the cherry-pick resulted in an empty commit (already applied upstream)
+            if git diff --cached --quiet && git diff --quiet; then
+                echo -e "${YELLOW}Commit is empty (already in upstream), skipping...${NC}"
+                git cherry-pick --skip
+            else
+                echo -e "${RED}Cherry-pick failed for commit $COMMIT${NC}"
+                echo -e "${YELLOW}Resolve conflicts manually, then run this script again to continue.${NC}"
+                echo -e "${YELLOW}The script will detect the resolved state and continue with remaining commits.${NC}"
+                exit 1
+            fi
         fi
     done
     
