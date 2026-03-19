@@ -5,7 +5,6 @@ set -e  # Exit immediately if a command exits with a non-zero status
 LOCAL_BRANCH="staging-merged"  # Your local branch name
 UPSTREAM_REMOTE="upstream"    # The name of your upstream remote
 UPSTREAM_BRANCH="staging"  # The upstream branch to track
-OLD_UPSTREAM_BRANCH="staging-c3-new"  # Previous upstream branch (for identifying custom commits)
 ORIGIN_REMOTE="origin"        # Your fork remote
 TEMP_BRANCH="temp-save-changes"  # Temporary branch to store your changes
 
@@ -16,6 +15,13 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${YELLOW}Starting update process for $LOCAL_BRANCH based on $UPSTREAM_REMOTE/$UPSTREAM_BRANCH${NC}"
+
+# Stash any uncommitted changes (e.g. edits to this script itself)
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo -e "${YELLOW}Stashing uncommitted changes...${NC}"
+    git stash push -m "update_fork: auto-stash before rebase"
+    STASHED=true
+fi
 
 # Check if we're in the middle of a cherry-pick operation
 if [ -d ".git/sequencer" ] || git status --porcelain | grep -q "^UU\|^AA\|^DD"; then
@@ -82,12 +88,15 @@ fi
 # Cherry-pick our custom commits
 echo -e "${YELLOW}Identifying and applying custom commits on top of new base...${NC}"
 
-# Get a list of commits that are in our branch but not in the old upstream branch
-# This ensures we only get our custom commits, not upstream commits that may differ between branches
+# Get custom commits by excluding the root (base snapshot) commit.
+# The root commit is the original sunnypilot snapshot that the custom work was built on.
+# Since staging-merged has unrelated history from upstream/staging, we can't use
+# --not upstream/branch to filter — instead we exclude the root commit directly.
 echo -e "${YELLOW}Identifying custom commits to apply...${NC}"
 
-# Get all custom commits by comparing against the old upstream branch
-CUSTOM_COMMITS=$(git log --format="%H" $TEMP_BRANCH --not $UPSTREAM_REMOTE/$OLD_UPSTREAM_BRANCH)
+ROOT_COMMIT=$(git rev-list --max-parents=0 $TEMP_BRANCH)
+echo -e "${YELLOW}Root (base snapshot) commit: $(git log -1 --oneline $ROOT_COMMIT)${NC}"
+CUSTOM_COMMITS=$(git log --format="%H" $TEMP_BRANCH --not $ROOT_COMMIT)
 
 # Convert to array (oldest first)
 COMMIT_ARRAY=($(echo "$CUSTOM_COMMITS" | tac))
@@ -144,6 +153,12 @@ else
         echo -e "${YELLOW}After pushing, you can set tracking with:${NC}"
         echo -e "  git branch --set-upstream-to=$ORIGIN_REMOTE/$LOCAL_BRANCH $LOCAL_BRANCH"
     }
+fi
+
+# Restore stashed changes
+if [ "$STASHED" == "true" ]; then
+    echo -e "${YELLOW}Restoring stashed changes...${NC}"
+    git stash pop || echo -e "${YELLOW}Warning: stash pop had conflicts, check 'git stash list'${NC}"
 fi
 
 # Clean up
