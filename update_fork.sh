@@ -2,7 +2,7 @@
 set -e
 
 # Configuration
-LOCAL_BRANCH="staging-merged"
+LOCAL_BRANCH="master"
 UPSTREAM_REMOTE="upstream"
 UPSTREAM_BRANCH="master"
 ORIGIN_REMOTE="origin"
