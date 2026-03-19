@@ -29,7 +29,7 @@ def main() -> NoReturn:
       if level >= log_level:
         log_handler.emit(record)
 
-      if len(record) > 2*1024*1024:
+      if len(record) > 300*1024:
         print("WARNING: log too big to publish", len(record))
         print(record[:100])
         continue
