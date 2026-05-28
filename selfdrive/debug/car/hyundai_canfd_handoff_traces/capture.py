@@ -42,8 +42,8 @@ def main():
 
   out_path = args.out or os.path.join(os.path.dirname(__file__), "fixtures", f"capture_{int(time.time())}.log")
 
-  panda = Panda()
-  panda.set_safety_mode(CarParams.SafetyModel.elm327)
+  p = Panda()
+  p.set_safety_mode(CarParams.SafetyModel.elm327)
 
   print(f"\nCapturing to {out_path}")
   print("Follow procedure: ignition on; stock SCC engage at speed; set/resume cycles; brake-disengage; re-engage; ignition off.")
@@ -53,7 +53,7 @@ def main():
   with open(out_path, "w") as f:
     try:
       while (time.monotonic() - start) < args.duration:
-        for can in panda.can_recv():
+        for can in p.can_recv():
           addr, dat, src = can[0], can[2], can[3]
           f.write(f"{time.time():.6f} {src} {addr:x} {dat.hex()}\n")
     except KeyboardInterrupt:
