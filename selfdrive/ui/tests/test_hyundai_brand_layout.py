@@ -162,7 +162,7 @@ class TestDynamicRadarHandoffVisibility(unittest.TestCase):
     """Toggle is hidden when CANFD_CAMERA_SCC is set."""
     flags = _CANFD_LKA_STEERING | _CANFD_CAMERA_SCC
     cp = self._cp(flags)
-    self.assertFalse(should_show_dynamic_handoff(cp, alpha_long_enabled=False))
+    self.assertFalse(should_show_dynamic_handoff(cp, alpha_long_enabled=True))
 
   def test_hidden_when_cp_is_none(self):
     """Toggle is hidden when CP is not yet available."""
