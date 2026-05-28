@@ -53,7 +53,7 @@ def main():
   with open(out_path, "w") as f:
     try:
       while (time.monotonic() - start) < args.duration:
-        for can in p.can_recv():
+        for can in p.can_recv():  # type: ignore[reportCallIssue]  # Pyright loses self-binding through ensure_can_packet_version decorator
           addr, dat, src = can[0], can[2], can[3]
           f.write(f"{time.time():.6f} {src} {addr:x} {dat.hex()}\n")
     except KeyboardInterrupt:
