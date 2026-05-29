@@ -81,7 +81,8 @@ Changes:
 - **Mark longitudinal TX entries with `disable_static_blocking=true`** in the HDA II long TX list (`HYUNDAI_CANFD_LKA_STEERING_LONG_TX_MSGS` at lines 239-250) — specifically the SCC_CONTROL entry and the ADRV addresses (0x51, 0x160, 0x1EA, 0x200, 0x345, 0x1DA). The framework explicitly supports this pattern (`opendbc/safety/declarations.h:89`: *"if true, static blocking is disabled so safety mode can dynamically handle it (e.g. selective AEB pass-through)"*). This change is conditional only in that the new `fwd` hook (below) honors it differently when the flag is set; existing TX-list semantics for other safety modes are unchanged.
 - **Add a `fwd` hook** to `hyundai_canfd_hooks`. Signature per `opendbc/safety/declarations.h:213`: `bool fwd_hook(int bus_num, int addr)` — returns true to block forwarding, false to allow. When `hyundai_canfd_dynamic_handoff` is true: for the longitudinal addresses, return `controls_allowed` (block forwarding when openpilot is the authority; allow forwarding when openpilot is disengaged). When `hyundai_canfd_dynamic_handoff` is false: return false for all addresses (no change from today, since the static blocking still applies).
 - **Extend the TX hook** at `hyundai_canfd_tx_hook` (lines 143-225). When `hyundai_canfd_dynamic_handoff` is true and `!controls_allowed`, reject TX of SCC_CONTROL and the ADRV control addresses. When the flag is false, no change.
-- **Do not gate UDS frames on `controls_allowed` in the safety code.** Addresses `0x730` (and `0x7D0` on non-HDA-II platforms) carry both the engaged-state tester-present and the disengaged-state deinit; the safety code must allow either at any time. carcontroller controls timing.
+- **Do not gate UDS frames on `controls_allowed` in the safety code.** Addresses `0x730` (and `0x7D0` on non-HDA-II platforms) carry both the engaged-state tester-present and the engage/disengage edge sequences; the safety code must allow them at any time. carcontroller controls timing.
+- **Widen the 0x730 UDS allowlist under the handoff bit.** The pre-existing tester-present-only allowlist at `hyundai_canfd_tx_hook` would otherwise drop every non-tester-present frame the carcontroller emits in this feature. When `hyundai_canfd_dynamic_handoff` is true, additionally accept the four exact no-suppress-response payloads the carcontroller fires on the engage/disengage edges: `02 10 03 00` (extendedDiagnosticSession), `03 28 03 01` (disableRxAndTx), `03 28 00 01` (enableRxAndTx), `02 10 01 00` (defaultSession). The suppress-bit is intentionally clear so the ECU emits positive acks (`02 50 03`, `02 68 03`, `02 68 00`, `02 50 01`) and NRCs (`03 7F 10 <code>`, `03 7F 28 <code>`) on `0x738` — these land in route/cabana logs and provide free Phase 1 / post-incident diagnostic visibility. The tester-present pattern (which fires at 1 Hz) keeps its suppress bit. All other 0x730 payloads remain rejected.
 
 **Tests:** `opendbc_repo/opendbc/safety/tests/test_hyundai_canfd.py` (existing file) extended with:
 
@@ -89,7 +90,9 @@ Changes:
 - A test that with the flag set and `controls_allowed=false`, the TX hook rejects those frames.
 - A test that with the flag set and `controls_allowed=false`, the forwarding hook allows stock SCC/FCA frames through (no blocking).
 - A test that with the flag set and `controls_allowed=true`, the forwarding hook blocks stock SCC/FCA frames.
-- A test that `0x730` TX is allowed in both states (the UDS path is not gated).
+- A test that with the flag set, each of the four handoff no-suppress payloads on `0x730` (`02 10 03 00`, `03 28 03 01`, `03 28 00 01`, `02 10 01 00`) is accepted regardless of `controls_allowed`.
+- A test that with the flag set, other 0x730 payloads (the same four with the suppress bit set, ECU reset, wrong communicationType) are still rejected.
+- A test that with the flag unset, none of the four handoff payloads is accepted on `0x730` (strict tester-present-only).
 - A test that with the flag unset, behavior is identical to today — regression coverage for existing alpha-long users.
 - A replay test that consumes a Phase 1 fixture trace and verifies safety decisions match what the trace shows the stock car doing in passthrough mode.
 
@@ -105,7 +108,9 @@ At CarParams init, when **all** of the following hold:
 - `params.get_bool("DynamicRadarHandoffEnabled")` is true.
 - `params.get_bool("AlphaLongitudinalEnabled")` is true (i.e. openpilotLongitudinalControl will be enabled).
 
-OR-in `HyundaiSafetyFlags.CANFD_DYNAMIC_HANDOFF.value` to the Hyundai CAN-FD safety_param built around `interface.py:81-84`. Under any condition unmet, the bit is clear and safety behavior is unchanged.
+OR-in `HyundaiSafetyFlags.CANFD_DYNAMIC_HANDOFF.value` to the Hyundai CAN-FD safety_param (done by `_initialize_dynamic_radar_handoff` in `opendbc/sunnypilot/car/interfaces.py`, fired from `setup_interfaces` which runs from `get_car` before `CarInterface.init`). Under any condition unmet, the bit is clear and safety behavior is unchanged.
+
+**Boot-time `disable_ecu` gating.** `CarInterface.init` at `interface.py:230-241` calls `disable_ecu(0x730)` whenever long mode is on. Under dynamic handoff this must be skipped — the carcontroller re-applies the disable on each engage edge instead, so the boot path must leave the ADAS DRV ECU in defaultSession with comm armed. Add an `if (CP.safetyConfigs[-1].safetyParam & HyundaiSafetyFlags.CANFD_DYNAMIC_HANDOFF) skip` guard in `init`. By the time `init` runs, `setup_interfaces` has already set the bit, so reading from `CP.safetyConfigs[-1].safetyParam` is correct.
 
 pandad itself requires no changes. The existing flow at `selfdrive/pandad/panda_safety.cc:60-79` reads `safety_configs` from CarParams and calls `set_safety_model(model, safety_param)` at boot — the new flag bit rides through this existing path. The `safety_configured_` one-shot latch in `panda_safety.cc:14` stays.
 
@@ -122,13 +127,21 @@ pandad itself requires no changes. The existing flow at `selfdrive/pandad/panda_
 
 **carcontroller — tester-present gating.** The block at `carcontroller.py:107-114` currently emits tester-present-to-`0x730` (on HDA II) at 1 Hz whenever `openpilotLongitudinalControl` is true and not Camera SCC. Extend the condition: when `DynamicRadarHandoffEnabled` is true, additionally require `CC.enabled` to be true. When the param is false, no change.
 
-**carcontroller — UDS deinit on disengage transition.** Track `prev_enabled` across `carcontroller.update()` calls. On the transition from `prev_enabled=true` to `CC.enabled=false`, when `DynamicRadarHandoffEnabled` is true, emit:
+**carcontroller — UDS deinit on disengage transition.** Track `prev_enabled` across `carcontroller.update()` calls. On the transition from `prev_enabled=true` to `CC.enabled=false`, when `DynamicRadarHandoffEnabled` is true, emit two **non-suppress-response** frames to `0x730` on `self.CAN.ECAN`:
 
-- `UDS 0x28 0x00 (CommunicationControl: enableRxAndTx)` to `0x730` on `self.CAN.ECAN`, with suppress response. Single frame, edge-triggered, not repeated.
+- `UDS 0x28 0x00 (CommunicationControl: enableRxAndTx)` — re-enables Rx/Tx in the current (extended) session.
+- `UDS 0x10 0x01 (DiagnosticSessionControl: defaultSession)` — drops the ECU back to defaultSession, which on Hyundai also resets any residual CommunicationControl state and arms stock SCC/AEB immediately (no ~5 s S3 timeout wait).
 
-A helper `make_communication_control_msg(addr, bus, sub_function, suppress_response=True)` is added to `opendbc_repo/opendbc/car/__init__.py` alongside the existing `make_tester_present_msg`, since the UDS service is generic enough to belong with the common helpers.
+Either frame alone restores comm; sending both gives a redundant fast-recovery path. Both are edge-triggered (single-shot per disengage), not repeated. Suppress-response is intentionally NOT set: the ECU's positive acks (`02 68 00`, `02 50 01`) and any NRCs (`03 7F 28 …`, `03 7F 10 …`) land on `0x738` in route/cabana logs — free diagnostic visibility with negligible bus-load cost.
 
-**carcontroller — disengage→engage redisable.** On the transition from `prev_enabled=false` to `CC.enabled=true`, when `DynamicRadarHandoffEnabled` is true, the carcontroller emits no special frame in v1. Phase 1 trace findings determine whether the ECU stays in its previous state (no redisable needed because tester-present alone keeps it down) or whether the explicit `UDS 0x28 0x03` is required. If required, this is a one-line follow-up; the spec defers the decision.
+Helpers `make_communication_control_msg` and `make_diagnostic_session_control_msg` are added to `opendbc_repo/opendbc/car/__init__.py` alongside the existing `make_tester_present_msg`.
+
+**carcontroller — disengage→engage redisable.** Boot-time `disable_ecu` is skipped under dynamic handoff (see 5.3); the ADAS DRV ECU is alive at boot and during every disengaged window. On the transition from `prev_enabled=false` to `CC.enabled=true`, when `DynamicRadarHandoffEnabled` is true, the carcontroller emits two non-suppress-response frames to `0x730` to re-silence it:
+
+- `UDS 0x10 0x03 (DiagnosticSessionControl: extendedDiagnosticSession)` — enter the diagnostic session in which CommunicationControl persists.
+- `UDS 0x28 0x03 (CommunicationControl: disableRxAndTx)` — silence the ECU.
+
+The 1 Hz tester-present that resumes on the same frame keeps the extended session alive (S3 ≈ 5 s). Both frames are edge-triggered, not repeated. Same non-suppress rationale as the disengage pair: positive acks (`02 50 03`, `02 68 03`) and NRCs land in trace logs. The 1 Hz tester-present keeps its suppress bit set — it fires too often for its acks to be useful, and would otherwise add 1 Hz of bus chatter for the whole engaged window.
 
 **UI sub-toggle.** New entry "Dynamic Radar Handoff" in `selfdrive/ui/sunnypilot/layouts/settings/vehicle/brands/hyundai.py`. Visible only when (a) Alpha Longitudinal is enabled and (b) `CP.flags & HyundaiFlags.CANFD_LKA_STEERING` and (c) not `CP.flags & HyundaiFlags.CANFD_NO_RADAR_DISABLE` and not `CP.flags & HyundaiFlags.CANFD_CAMERA_SCC`. Tooltip: *"Restores stock SCC and AEB when sunnypilot is disengaged. AEB may not re-arm reliably after disengagement; stock behavior is hardware-dependent. Out of scope: stock AEB is not preserved while sunnypilot is engaged."*
 
@@ -137,7 +150,9 @@ A helper `make_communication_control_msg(addr, bus, sub_function, suppress_respo
 - carcontroller: `opendbc_repo/opendbc/car/hyundai/tests/test_hyundai.py` extended to assert:
   - With `DynamicRadarHandoffEnabled=true` and `CC.enabled=false`, no SCC_CONTROL or ADRV frame is emitted.
   - With `DynamicRadarHandoffEnabled=true` and `CC.enabled=false`, no tester-present-to-`0x730` is emitted.
-  - With `DynamicRadarHandoffEnabled=true`, on the engage→disengage edge, exactly one `UDS 0x28 0x00` frame to `0x730` is emitted, and not repeated on subsequent disengaged cycles.
+  - With `DynamicRadarHandoffEnabled=true`, on the engage→disengage edge, exactly one `UDS 0x28 0x00` and one `UDS 0x10 0x01` frame to `0x730` is emitted, and neither is repeated on subsequent disengaged cycles.
+  - With `DynamicRadarHandoffEnabled=true`, on the disengage→engage edge, exactly one `UDS 0x10 0x03` and one `UDS 0x28 0x03` frame to `0x730` is emitted, and neither is repeated on subsequent engaged cycles.
+  - With `DynamicRadarHandoffEnabled=true`, the boot-time `CarInterface.init` `disable_ecu` call to `0x730` is skipped.
   - With `DynamicRadarHandoffEnabled=false`, all of today's behavior is preserved.
 - UI: **create** a new test at `selfdrive/ui/tests/test_hyundai_brand_layout.py` (no equivalent exists today). Asserts the sub-toggle is hidden under each unmet visibility condition and visible when all are met.
 
@@ -147,9 +162,9 @@ A helper `make_communication_control_msg(addr, bus, sub_function, suppress_respo
 
 Sunnypilot starts, alpha long enabled, dynamic handoff enabled, GV70 Electrified (or equivalent HDA II platform). At CarParams init, `HYUNDAI_PARAM_CANFD_DYNAMIC_HANDOFF` is OR'd into the Hyundai CAN-FD safety_param. pandad applies the safety model at `ControlsReady`. Safety code in panda reads the flag bit, sets `hyundai_canfd_dynamic_handoff = true`. `controls_allowed` defaults to false. Safe state: `STOCK_PASSTHROUGH` — longitudinal TX is rejected at the safety layer, stock SCC/FCA frames forward freely.
 
-carcontroller emits no longitudinal frames (CC.enabled is false at boot). The boot-time UDS sequence sent by carcontroller today — `UDS 0x10 0x03` extended session and `UDS 0x28 0x03` disable — does **not** happen under dynamic handoff because the carcontroller change gates them on `CC.enabled`. The ADAS DRV ECU stays in default session, comm enabled, AEB armed. This is the desired state at boot.
+carcontroller emits no longitudinal frames (CC.enabled is false at boot). The boot-time UDS sequence today lives in `CarInterface.init` at `interface.py:230-241` — `disable_ecu(addr=0x730, com_cont_req=\x28\x83\x01)` which sends `UDS 0x10 0x03` then `UDS 0x28 0x83 0x01`. Under dynamic handoff, that call is **gated on the `CANFD_DYNAMIC_HANDOFF` safety bit and skipped**. The ADAS DRV ECU stays in default session, comm enabled, AEB armed. This is the desired state at boot.
 
-(Note: this assumes the boot-time disable sequence is gated by `openpilotLongitudinalControl AND CC.enabled` under dynamic handoff. If the boot disable is not actually emitted by carcontroller but rather by some other path — Phase 1 trace work confirms — this section is reviewed.)
+(Earlier drafts assumed the boot disable lived in carcontroller — it does not. The fix is in `CarInterface.init`, not in carcontroller; carcontroller emits the re-disable on the disengage→engage edge instead.)
 
 ### Engage transition (disengaged → engaged)
 
@@ -165,7 +180,7 @@ selfdriveState.enabled flips true
   └─ carcontroller's 100Hz tick (next ≤10ms): CC.enabled flips true
         ├─ begins synthesizing SCC_CONTROL and ADRV frames
         ├─ resumes 1Hz tester-present-to-0x730
-        └─ (Phase 1 finding) if redisable required: emit UDS 0x28 0x03 once
+        └─ emits UDS 0x10 0x03 (extendedDiagnosticSession) + UDS 0x28 0x83 0x01 (disableRxAndTx)  [REDISABLE]
 ```
 
 Race window: same 100ms-bounded window as before. carcontroller may emit frames that the safety code rejects until the heartbeat lands; safety code may accept frames carcontroller hasn't built yet. Both harmless.
@@ -183,10 +198,10 @@ selfdriveState.enabled flips false
   └─ carcontroller's 100Hz tick (next ≤10ms): CC.enabled flips false
         ├─ stops emitting SCC_CONTROL and ADRV frames
         ├─ stops emitting tester-present-to-0x730
-        └─ emits single UDS 0x28 0x00 (enableRxAndTx) to 0x730  [DEINIT]
+        └─ emits UDS 0x28 0x00 (enableRxAndTx) + UDS 0x10 0x01 (defaultSession) to 0x730  [DEINIT]
 ```
 
-The single deinit frame is the load-bearing piece. It tells the ADAS DRV ECU "you may now communicate normally" — undoing the boot-time `UDS 0x28 0x03`. The ECU should then resume its normal SCC/AEB operation.
+The deinit pair is the load-bearing piece. `0x28 0x00` tells the ADAS DRV ECU "you may now communicate normally" — undoing the engage-edge `UDS 0x28 0x83 0x01`. `0x10 0x01` then drops the ECU back to defaultSession, which on Hyundai resets any residual CommunicationControl state and arms stock SCC/AEB immediately (no ~5 s S3 timeout wait). Either frame alone restores comm; sending both is the redundant fast-recovery path.
 
 ### Steady state — disengaged
 
@@ -200,17 +215,22 @@ Today's alpha-long behavior. carcontroller emits SCC_CONTROL, ADRV frames, and 1
 
 - No new USB control message between pandad and the panda.
 - No new pandad-side state machine.
-- No polling, no acks, no retries for the deinit frame. It's fire-and-forget. If lost, the next engage→disengage cycle re-issues it. Worst case: AEB stays offline until the next disengage that succeeds.
+- No polling, no acks, no retries for any edge-triggered frame. All four (engage `0x10 0x03` + `0x28 0x83 0x01`, disengage `0x28 0x00` + `0x10 0x01`) are fire-and-forget. The two-frame redundancy on each edge mitigates single-frame loss; if both engage frames are lost the ECU is never re-silenced (stock + sunnypilot SCC will fight on next engage), if both disengage frames are lost the ECU stays disabled until the next disengage that succeeds.
 
 ## Error handling
 
-### Deinit frame is lost in transit
+### Edge frame is lost in transit
 
-Fire-and-forget. Next disengage transition emits another deinit. In practice the panda's USB-to-CAN path is reliable enough that this is rare; we accept the worst-case scenario of "AEB stays offline until the next disengage" without adding retry/ack logic.
+Fire-and-forget with two-frame redundancy on each edge:
 
-### ADAS DRV ECU does not respond to deinit
+- **Disengage edge.** `0x28 0x00` and `0x10 0x01` are independently sufficient (either restores comm). Both being lost is the only failure case, in which the ECU stays disabled until the next disengage that succeeds.
+- **Engage edge.** `0x10 0x03` and `0x28 0x83 0x01` are sequentially dependent — losing the first means the second has no effect (CommControl doesn't persist in defaultSession). Losing both, or just the first, means the ECU is never re-silenced on this engage cycle and the stock ADAS DRV will fight openpilot's SCC_CONTROL. The fwd hook still blocks stock SCC forwarding (`controls_allowed=true`), so the user-visible failure is at most a stock SCC frame the panda blocks before it reaches the vehicle CAN — not a control-fight on the bus.
 
-No detection. The ECU's behavior is observed in Phase 1; if its firmware silently ignores `UDS 0x28 0x00` outside of a specific session context, that's flagged in `findings.md` and the spec needs revision to send the session-control frame first. v1 sends only the bare CommunicationControl frame; if Phase 1 reveals this is insufficient, a one-line addition prepends `UDS 0x10 0x01` (default session).
+In practice the panda's USB-to-CAN path is reliable enough that the dropped-edge case is rare; we accept the worst-case scenarios above without adding retry/ack logic.
+
+### ADAS DRV ECU does not respond to a UDS frame
+
+No detection. v1 sends suppress-response so positive acks aren't expected; NRCs are still emitted by the ECU (the suppress bit only mutes positive responses) and visible in a candump trace if the ECU rejects. The engage and disengage sequences are designed redundantly per above, so a single-frame rejection still leaves a working path.
 
 ### Radar latches a DTC across a transition
 
@@ -268,7 +288,7 @@ HIL acceptance criteria:
 
 Pass: all four drives produce zero new DTCs and a normal cluster indicator post-disengage. Sub-toggle moves from developer panel to standard Vehicle → Hyundai settings.
 
-Fail: any drive latches a DTC or shows a cluster fault. Findings inform a follow-up — most likely a `UDS 0x10 0x01` prepend or a Phase 1-discovered alternate sequence. Sub-toggle stays behind the developer panel.
+Fail: any drive latches a DTC or shows a cluster fault. Findings inform a follow-up — most likely a Phase 1-discovered alternate session sequence, an `0x11 (ECUReset)` panic-recovery path, or a sub-function tweak. Sub-toggle stays behind the developer panel.
 
 ## Rollout
 
@@ -284,6 +304,6 @@ Five phases, each independently mergeable as a no-op for existing users until th
 
 - **Generalization to other HDA II platforms** beyond the first validated car (likely GV70 Electrified). The runtime gate (`CANFD_LKA_STEERING` flag) already covers them by design; per-platform HIL validation determines when each moves out of the developer panel.
 - **Generalization to non-HDA-II HKG CAN-FD platforms** (those that use `0x7D0` radar directly). The framework is platform-gated; extension is a follow-up spec.
-- **Whether `UDS 0x10 0x01` (default session) needs to precede the `UDS 0x28 0x00` deinit.** Phase 1 trace work and Phase 5 HIL drives answer this. If yes, a one-line addition in 5.4.
-- **Whether a redisable on re-engage is required** or whether tester-present alone is sufficient to maintain the ECU in its disabled state. Phase 1 findings determine this.
+- ~~**Whether `UDS 0x10 0x01` (default session) needs to precede the `UDS 0x28 0x00` deinit.**~~ **Resolved before Phase 1 by deriving from ISO 14229-1 semantics: yes, send `0x10 0x01` — but as the second frame in the deinit pair, not as a prepend.** On Hyundai, CommControl persists only as long as the extended session does (`opendbc/car/disable_ecu.py:12`); dropping back to defaultSession also resets any residual CommControl. Sending both makes each frame independently sufficient. See 5.4.
+- ~~**Whether a redisable on re-engage is required** or whether tester-present alone is sufficient.~~ **Resolved: required.** With the boot disable skipped under handoff (5.3), the ECU is in defaultSession at every engage. Tester-present in defaultSession does not silence the ECU; an explicit `0x10 0x03` + `0x28 0x83 0x01` pair on the engage edge is mandatory. See 5.4.
 - **Whether `findings.md` is a hard prerequisite for Phase 2** or whether Phase 2 can land behind the developer panel with stub fixtures and absorb Phase 1 findings as they come.

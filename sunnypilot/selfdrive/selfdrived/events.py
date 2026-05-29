@@ -243,4 +243,20 @@ EVENTS_SP: dict[int, dict[str, Alert | AlertCallbackType]] = {
       AlertStatus.normal, AlertSize.none,
       Priority.MID, VisualAlert.none, AudibleAlert.prompt, 3.),
   },
+
+  # HKG CAN-FD HDA II dynamic radar handoff. Fired by the carcontroller watchdog when the engage- or
+  # disengage-edge UDS sequence is NRC'd or times out. Engage-fail is safety-critical (stock and openpilot
+  # ADAS DRV would be active simultaneously on next engage) → IMMEDIATE_DISABLE. Disengage-fail only
+  # means stock SCC/AEB may stay offline → warn the driver, do not disengage.
+  EventNameSP.adasDrvHandoffEngageFail: {
+    ET.IMMEDIATE_DISABLE: ImmediateDisableAlert("Dynamic Radar Handoff: stock ADAS not silenced"),
+  },
+
+  EventNameSP.adasDrvHandoffDisengageWarn: {
+    ET.WARNING: Alert(
+      "Stock SCC/AEB may be offline",
+      "Dynamic Radar Handoff: ECU did not acknowledge",
+      AlertStatus.normal, AlertSize.mid,
+      Priority.LOW, VisualAlert.none, AudibleAlert.warningSoft, 4.),
+  },
 }

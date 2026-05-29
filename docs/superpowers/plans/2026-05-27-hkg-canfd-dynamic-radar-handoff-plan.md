@@ -4,9 +4,19 @@
 
 **Spec:** `docs/superpowers/specs/2026-05-27-hkg-canfd-dynamic-radar-handoff-design.md`
 
-**Goal:** Restore stock SCC and AEB on HKG CAN-FD HDA II platforms whenever sunnypilot is disengaged, by branching the panda safety code on the existing `controls_allowed` global and emitting a single UDS `CommunicationControl (0x28 0x00)` deinit frame on the engage→disengage transition.
+> **Post-implementation amendment (2026-05-29).** The original plan called for a single `0x28 0x00` disengage frame and no engage-edge work. Code review found that (a) the panda's existing 0x730 allowlist accepts only tester-present, so the `0x28 0x00` was being silently dropped, and (b) the boot disable lives in `CarInterface.init` — not the carcontroller — so gating it on `CC.enabled` never had effect; the ECU was silenced at boot and only stayed silenced for ~5 s before S3 expired. The implementation now:
+>
+> 1. Widens the safety allowlist on `0x730` to permit four exact **non-suppress-response** patterns under the handoff bit: `0x10 0x03 0x00` (extendedDiagnosticSession), `0x28 0x03 0x01` (disableRxAndTx), `0x28 0x00 0x01` (enableRxAndTx), `0x10 0x01 0x00` (defaultSession). Suppress-response is intentionally NOT set on edge frames so the ECU's positive acks and NRCs land on `0x738` in route/cabana logs for free diagnostic visibility. The 1 Hz tester-present keeps its suppress bit.
+> 2. Skips the boot-time `disable_ecu(0x730)` call in `CarInterface.init` when the `CANFD_DYNAMIC_HANDOFF` safety bit is set.
+> 3. Emits the `0x10 0x03` + `0x28 0x83 0x01` pair on the disengage→engage edge to re-silence the ECU (because the boot disable was skipped).
+> 4. Emits the `0x28 0x00` + `0x10 0x01` pair on the engage→disengage edge (the `0x10 0x01` is a redundant fast-recovery path: it drops the ECU to defaultSession immediately rather than waiting ~5 s for S3 to time out).
+> 5. Adds a `make_diagnostic_session_control_msg` helper alongside the existing `make_tester_present_msg` / `make_communication_control_msg`.
+>
+> The phase-2 / phase-3 / phase-4 task blocks below reflect the original single-deinit plan; the actual landed code matches the amended design above. See the spec for the authoritative current design.
 
-**Architecture:** Boot-time-set safety flag bit (`HYUNDAI_PARAM_CANFD_DYNAMIC_HANDOFF`) opts the Hyundai CAN-FD safety code into runtime-mutating TX-rejection and forwarding decisions driven by `controls_allowed` (already maintained by the 100 ms heartbeat). carcontroller cooperates by gating longitudinal-command and tester-present emission on `CC.enabled`, and edge-triggers a single UDS deinit frame to `0x730` on disengage. Per-platform gate is `CP.flags & HyundaiFlags.CANFD_LKA_STEERING` (HDA II), excluding `CANFD_NO_RADAR_DISABLE` and `CANFD_CAMERA_SCC`.
+**Goal:** Restore stock SCC and AEB on HKG CAN-FD HDA II platforms whenever sunnypilot is disengaged, by branching the panda safety code on the existing `controls_allowed` global and emitting UDS edge sequences (`0x10 0x03` + `0x28 0x83 0x01` on engage, `0x28 0x00` + `0x10 0x01` on disengage) on `0x730`.
+
+**Architecture:** Boot-time-set safety flag bit (`HYUNDAI_PARAM_CANFD_DYNAMIC_HANDOFF`) opts the Hyundai CAN-FD safety code into runtime-mutating TX-rejection and forwarding decisions driven by `controls_allowed` (already maintained by the 100 ms heartbeat), and additionally widens the strict 0x730 UDS allowlist to permit four engage/disengage edge patterns. carcontroller cooperates by gating longitudinal-command and tester-present emission on `CC.enabled`, edge-triggering the disengage deinit pair (`0x28 0x00` + `0x10 0x01`), and edge-triggering the engage redisable pair (`0x10 0x03` + `0x28 0x83 0x01`) to replace the boot-time disable that `CarInterface.init` skips under the handoff bit. Per-platform gate is `CP.flags & HyundaiFlags.CANFD_LKA_STEERING` (HDA II), excluding `CANFD_NO_RADAR_DISABLE` and `CANFD_CAMERA_SCC`.
 
 **Tech Stack:** Python (sunnypilot daemons, carcontroller, CarParams, UI), C (opendbc panda safety modes), pytest (Python tests), opendbc `libsafety_py` (panda safety unit tests via a C-shared-object), git submodule structure (`opendbc_repo`, `panda`), sunnypilot fork conventions.
 

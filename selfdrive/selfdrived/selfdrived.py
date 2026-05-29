@@ -99,7 +99,7 @@ class SelfdriveD(CruiseHelper):
                                    'carOutput', 'driverMonitoringState', 'longitudinalPlan', 'livePose', 'liveDelay',
                                    'managerState', 'liveParameters', 'radarState', 'liveTorqueParameters',
                                    'controlsState', 'carControl', 'driverAssistance', 'alertDebug', 'userBookmark', 'audioFeedback',
-                                   'modelDataV2SP', 'longitudinalPlanSP'] + \
+                                   'modelDataV2SP', 'longitudinalPlanSP', 'carStateSP'] + \
                                    self.camera_packets + self.sensor_packets + self.gps_packets,
                                   ignore_alive=ignore, ignore_avg_freq=ignore,
                                   ignore_valid=ignore, frequency=int(1/DT_CTRL))
@@ -224,6 +224,15 @@ class SelfdriveD(CruiseHelper):
 
       car_events_sp = self.car_events_sp.update(CS, self.events).to_msg()
       self.events_sp.add_from_msg(car_events_sp)
+
+      # HKG CAN-FD HDA II dynamic radar handoff fault — surfaced by the carcontroller watchdog through
+      # CarStateSP.adasDrvHandoffFault. engageFailed disengages openpilot immediately (both ADAS active);
+      # disengageFailed alerts but does not disengage (stock SCC/AEB may be offline).
+      handoff_fault = self.sm['carStateSP'].adasDrvHandoffFault
+      if handoff_fault == custom.CarStateSP.HandoffFault.engageFailed:
+        self.events_sp.add(custom.OnroadEventSP.EventName.adasDrvHandoffEngageFail)
+      elif handoff_fault == custom.CarStateSP.HandoffFault.disengageFailed:
+        self.events_sp.add(custom.OnroadEventSP.EventName.adasDrvHandoffDisengageWarn)
 
       if self.CP.notCar:
         # wait for everything to init first

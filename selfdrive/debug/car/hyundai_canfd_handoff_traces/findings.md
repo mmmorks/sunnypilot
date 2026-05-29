@@ -40,9 +40,9 @@ For each captured fixture, document:
   - Communication control: e.g. `0x28 0x03 0x01` (subFunction + communicationType)
   - Tester-present cadence: hz, with/without suppress-response
 - **What 0x730 emits between transitions (counter/sequence behavior).**
-- **Whether stopping tester-present alone is sufficient for the ECU to self-recover within 5 seconds (timeout).**
-- **Whether a redisable on re-engage is required, or whether tester-present resumption is sufficient.**
-- **Whether `UDS 0x28 0x00` (enableRxAndTx) alone restores the ECU, or whether a preceding `UDS 0x10 0x01` (defaultSession) is required.**
+- **Whether the ECU honors the implemented engage sequence** (`0x10 0x03` extendedDiagnosticSession + `0x28 0x83 0x01` disableRxAndTx, both suppress-response) — silence on bus 1 from `0x738` after the pair?
+- **Whether the ECU honors the implemented disengage sequence** (`0x28 0x80 0x01` enableRxAndTx + `0x10 0x81 0x00` defaultSession, both suppress-response) — SCC/FCA frame emission restored from `0x738`?
+- **NRCs observed on `0x738`** (suppress-response only mutes positive acks; any NRC byte the ECU emits is a real rejection and indicates a sub-function / session / security-access mismatch).
 - **DTC scan-tool readout at end of drive (full module list).**
 
 ## Captures
