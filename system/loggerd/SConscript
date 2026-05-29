@@ -9,16 +9,21 @@ if arch != "larch64":
   src += ['encoder/ffmpeg_encoder.cc']
   libs += ['yuv']
 
+link_flags = []
 if arch == "Darwin":
   # exclude v4l
   del src[src.index('encoder/v4l_encoder.cc')]
+  # vendored ffmpeg's libavcodec/libavutil include VideoToolbox HW codecs;
+  # link the matching Apple frameworks so the symbols resolve.
+  for fw in ('VideoToolbox', 'CoreVideo', 'CoreMedia', 'CoreFoundation', 'AudioToolbox', 'Security'):
+    link_flags += ['-framework', fw]
 
 logger_lib = env.Library('logger', src)
 libs.insert(0, logger_lib)
 
-env.Program('loggerd', ['loggerd.cc'], LIBS=libs)
-env.Program('encoderd', ['encoderd.cc'], LIBS=libs + ["jpeg"])
-env.Program('bootlog.cc', LIBS=libs)
+env.Program('loggerd', ['loggerd.cc'], LIBS=libs, LINKFLAGS=env['LINKFLAGS'] + link_flags)
+env.Program('encoderd', ['encoderd.cc'], LIBS=libs + ["jpeg"], LINKFLAGS=env['LINKFLAGS'] + link_flags)
+env.Program('bootlog.cc', LIBS=libs, LINKFLAGS=env['LINKFLAGS'] + link_flags)
 
 if GetOption('extras'):
   env.Program('tests/test_logger', ['tests/test_runner.cc', 'tests/test_logger.cc', 'tests/test_zstd_writer.cc'], LIBS=libs)

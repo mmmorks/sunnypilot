@@ -70,6 +70,12 @@ base_libs = [common, messaging, cereal, visionipc, 'm', 'pthread'] + qt_env["LIB
 
 if arch == "Darwin":
   base_frameworks.append('QtCharts')
+  # vendored ffmpeg's libavcodec/libavutil include VideoToolbox HW codecs;
+  # libusb-1.0 on macOS uses IOKit. Link the matching Apple frameworks so the
+  # static-link symbols resolve. -lobjc goes via LINKFLAGS to bypass the
+  # SConstruct's vendored-libs whitelist (objc is a macOS system library).
+  base_frameworks += ['VideoToolbox', 'CoreVideo', 'CoreMedia', 'CoreFoundation', 'AudioToolbox', 'Security', 'IOKit']
+  qt_env['LINKFLAGS'] += ['-lobjc']
 else:
   base_libs.append('Qt5Charts')
 

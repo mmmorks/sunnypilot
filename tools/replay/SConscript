@@ -10,6 +10,10 @@ replay_lib_src = ["replay.cc", "consoleui.cc", "camera.cc", "filereader.cc", "lo
                   "route.cc", "util.cc", "seg_mgr.cc", "timeline.cc", "py_downloader.cc"]
 if arch != "Darwin":
   replay_lib_src.append("qcom_decoder.cc")
+else:
+  # vendored ffmpeg's libavcodec/libavutil include VideoToolbox HW codecs;
+  # link the matching Apple frameworks so the symbols resolve.
+  base_frameworks += ['VideoToolbox', 'CoreVideo', 'CoreMedia', 'CoreFoundation', 'AudioToolbox', 'Security']
 replay_lib = replay_env.Library("replay", replay_lib_src, LIBS=base_libs, FRAMEWORKS=base_frameworks)
 Export('replay_lib')
 replay_libs = [replay_lib, 'avformat', 'avcodec', 'swresample', 'avutil', 'x264', 'z', 'bz2', 'zstd', 'yuv', 'ncurses'] + base_libs
