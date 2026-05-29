@@ -40,7 +40,7 @@ def main():
 
   panda_alive_check()
 
-  out_path = args.out or os.path.join(os.path.dirname(__file__), "fixtures", f"capture_{int(time.time())}.log")
+  out_path = args.out or os.path.join(os.path.dirname(__file__), "fixtures", f"capture_{int(time.time())}.log")  # noqa: TID251
 
   p = Panda()
   p.set_safety_mode(CarParams.SafetyModel.elm327)
@@ -55,7 +55,7 @@ def main():
       while (time.monotonic() - start) < args.duration:
         for can in p.can_recv():  # type: ignore[reportCallIssue]  # Pyright loses self-binding through ensure_can_packet_version decorator
           addr, dat, src = can[0], can[2], can[3]
-          f.write(f"{time.time():.6f} {src} {addr:x} {dat.hex()}\n")
+          f.write(f"{time.time():.6f} {src} {addr:x} {dat.hex()}\n")  # noqa: TID251
     except KeyboardInterrupt:
       print("\nstopped by user")
 

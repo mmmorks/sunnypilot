@@ -18,8 +18,8 @@ import importlib.util
 import os
 import sys
 import types
-import unittest
-from unittest.mock import MagicMock
+import unittest  # noqa: TID251
+from unittest.mock import MagicMock  # noqa: TID251
 
 from opendbc.car.hyundai.values import HyundaiFlags
 

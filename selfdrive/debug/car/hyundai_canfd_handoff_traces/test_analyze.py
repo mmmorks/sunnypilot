@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import os
-import unittest
+import unittest  # noqa: TID251
 
-from selfdrive.debug.car.hyundai_canfd_handoff_traces.analyze import parse_log, summarize_uds_to_addr
+from openpilot.selfdrive.debug.car.hyundai_canfd_handoff_traces.analyze import parse_log, summarize_uds_to_addr
 
 
 FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "synthetic_basic.log")
