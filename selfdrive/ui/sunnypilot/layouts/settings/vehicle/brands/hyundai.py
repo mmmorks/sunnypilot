@@ -11,7 +11,7 @@ from openpilot.system.ui.sunnypilot.widgets.list_view import multiple_button_ite
 from opendbc.car.hyundai.values import CAR, CANFD_UNSUPPORTED_LONGITUDINAL_CAR, HyundaiFlags, UNSUPPORTED_LONGITUDINAL_CAR
 
 DYNAMIC_RADAR_HANDOFF_DESCRIPTION = (
-  "Restores stock SCC and AEB when sunnypilot is disengaged. AEB may not re-arm reliably after disengagement; "
+  "Restores stock SCC and AEB when sunnypilot is disengaged. AEB may not re-arm reliably after disengagement; " +
   "stock behavior is hardware-dependent. Out of scope: stock AEB is not preserved while sunnypilot is engaged."
 )
 
