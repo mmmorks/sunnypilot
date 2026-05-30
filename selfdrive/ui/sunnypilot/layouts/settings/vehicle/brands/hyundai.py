@@ -8,7 +8,7 @@ from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.base impo
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.sunnypilot.widgets.list_view import multiple_button_item_sp, toggle_item_sp
-from opendbc.car.hyundai.values import CAR, CANFD_UNSUPPORTED_LONGITUDINAL_CAR, HyundaiFlags, UNSUPPORTED_LONGITUDINAL_CAR
+from opendbc.car.hyundai.values import CAR, HyundaiFlags, UNSUPPORTED_LONGITUDINAL_CAR
 
 DYNAMIC_RADAR_HANDOFF_DESCRIPTION = (
   "Restores stock SCC and AEB when sunnypilot is disengaged. AEB may not re-arm reliably after disengagement; " +
@@ -20,7 +20,7 @@ def should_show_dynamic_handoff(cp, alpha_long_enabled: bool) -> bool:
   """Return True if the Dynamic Radar Handoff toggle should be visible.
 
   Conditions (all must be true):
-  - HDA II detected (CANFD_LKA_STEERING flag set)
+  - HDA II detected (CANFD_LKA_STEER_MSG flag set)
   - Radar disable is supported on this platform (CANFD_NO_RADAR_DISABLE NOT set)
   - Not camera SCC (CANFD_CAMERA_SCC NOT set)
   - Alpha Longitudinal is enabled
@@ -28,7 +28,7 @@ def should_show_dynamic_handoff(cp, alpha_long_enabled: bool) -> bool:
   if cp is None:
     return False
   flags = cp.flags
-  is_hda2 = bool(flags & HyundaiFlags.CANFD_LKA_STEERING)
+  is_hda2 = bool(flags & HyundaiFlags.CANFD_LKA_STEER_MSG)
   radar_disable_supported = not bool(flags & HyundaiFlags.CANFD_NO_RADAR_DISABLE)
   not_camera_scc = not bool(flags & HyundaiFlags.CANFD_CAMERA_SCC)
   return is_hda2 and radar_disable_supported and not_camera_scc and alpha_long_enabled
@@ -66,7 +66,7 @@ class HyundaiSettings(BrandSettings):
     bundle = ui_state.params.get("CarPlatformBundle")
     if bundle:
       platform = bundle.get("platform")
-      self.alpha_long_available = CAR[platform] not in (UNSUPPORTED_LONGITUDINAL_CAR | CANFD_UNSUPPORTED_LONGITUDINAL_CAR)
+      self.alpha_long_available = CAR[platform] not in set().union(*UNSUPPORTED_LONGITUDINAL_CAR.values())
     elif ui_state.CP is not None:
       self.alpha_long_available = ui_state.CP.alphaLongitudinalAvailable
 

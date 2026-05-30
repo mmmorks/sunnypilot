@@ -77,7 +77,7 @@ class TestDynamicRadarHandoffVisibility(unittest.TestCase):
     return cp
 
   def test_visible_when_all_conditions_met(self):
-    cp = self._cp(HyundaiFlags.CANFD_LKA_STEERING.value)
+    cp = self._cp(HyundaiFlags.CANFD_LKA_STEER_MSG.value)
     self.assertTrue(_should_show_dynamic_handoff(cp, alpha_long_enabled=True))
 
   def test_hidden_when_not_hda2(self):
@@ -85,16 +85,16 @@ class TestDynamicRadarHandoffVisibility(unittest.TestCase):
     self.assertFalse(_should_show_dynamic_handoff(cp, alpha_long_enabled=True))
 
   def test_hidden_when_alpha_long_off(self):
-    cp = self._cp(HyundaiFlags.CANFD_LKA_STEERING.value)
+    cp = self._cp(HyundaiFlags.CANFD_LKA_STEER_MSG.value)
     self.assertFalse(_should_show_dynamic_handoff(cp, alpha_long_enabled=False))
 
   def test_hidden_when_no_radar_disable_flag(self):
-    flags = HyundaiFlags.CANFD_LKA_STEERING.value | HyundaiFlags.CANFD_NO_RADAR_DISABLE.value
+    flags = HyundaiFlags.CANFD_LKA_STEER_MSG.value | HyundaiFlags.CANFD_NO_RADAR_DISABLE.value
     cp = self._cp(flags)
     self.assertFalse(_should_show_dynamic_handoff(cp, alpha_long_enabled=True))
 
   def test_hidden_when_camera_scc(self):
-    flags = HyundaiFlags.CANFD_LKA_STEERING.value | HyundaiFlags.CANFD_CAMERA_SCC.value
+    flags = HyundaiFlags.CANFD_LKA_STEER_MSG.value | HyundaiFlags.CANFD_CAMERA_SCC.value
     cp = self._cp(flags)
     self.assertFalse(_should_show_dynamic_handoff(cp, alpha_long_enabled=True))
 
