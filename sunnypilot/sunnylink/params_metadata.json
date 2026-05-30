@@ -278,6 +278,10 @@
     "title": "Dynamic Experimental Control",
     "description": ""
   },
+  "DynamicRadarHandoffEnabled": {
+    "title": "Dynamic Radar Handoff",
+    "description": ""
+  },
   "EnableCopyparty": {
     "title": "copyparty Service",
     "description": ""
