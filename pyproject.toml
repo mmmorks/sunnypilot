@@ -186,6 +186,7 @@ exclude = [
   "teleoprtc",
   "teleoprtc_repo",
   "third_party",
+  "tools/car_porting",  # fork-specific NNFF training/plotting scripts, not product code
   "*.ipynb",
   "generated",
 ]
@@ -226,6 +227,7 @@ exclude = [
   "teleoprtc/",
   "teleoprtc_repo/",
   "third_party/",
+  "tools/car_porting/",  # fork-specific NNFF training/plotting scripts, not product code
 ]
 
 [tool.ty.rules]

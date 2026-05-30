@@ -48,7 +48,7 @@ def sanitize(filename):
         "LPT6", "LPT7", "LPT8", "LPT9",
     ]  # Reserved words on Windows
     filename = "".join(c for c in filename if c not in blacklist)
-    # Remove all charcters below code point 32
+    # Remove all characters below code point 32
     filename = "".join(c for c in filename if 31 < ord(c))
     filename = unicodedata.normalize("NFKD", filename)
     filename = filename.rstrip(". ")  # Windows does not allow these at end

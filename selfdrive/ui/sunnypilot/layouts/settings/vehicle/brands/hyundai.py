@@ -7,8 +7,31 @@ See the LICENSE.md file in the root directory for more details.
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.vehicle.brands.base import BrandSettings
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.multilang import tr
-from openpilot.system.ui.sunnypilot.widgets.list_view import multiple_button_item_sp
-from opendbc.car.hyundai.values import CAR, CANFD_UNSUPPORTED_LONGITUDINAL_CAR, UNSUPPORTED_LONGITUDINAL_CAR
+from openpilot.system.ui.sunnypilot.widgets.list_view import multiple_button_item_sp, toggle_item_sp
+from opendbc.car.hyundai.values import CAR, CANFD_UNSUPPORTED_LONGITUDINAL_CAR, HyundaiFlags, UNSUPPORTED_LONGITUDINAL_CAR
+
+DYNAMIC_RADAR_HANDOFF_DESCRIPTION = (
+  "Restores stock SCC and AEB when sunnypilot is disengaged. AEB may not re-arm reliably after disengagement; " +
+  "stock behavior is hardware-dependent. Out of scope: stock AEB is not preserved while sunnypilot is engaged."
+)
+
+
+def should_show_dynamic_handoff(cp, alpha_long_enabled: bool) -> bool:
+  """Return True if the Dynamic Radar Handoff toggle should be visible.
+
+  Conditions (all must be true):
+  - HDA II detected (CANFD_LKA_STEERING flag set)
+  - Radar disable is supported on this platform (CANFD_NO_RADAR_DISABLE NOT set)
+  - Not camera SCC (CANFD_CAMERA_SCC NOT set)
+  - Alpha Longitudinal is enabled
+  """
+  if cp is None:
+    return False
+  flags = cp.flags
+  is_hda2 = bool(flags & HyundaiFlags.CANFD_LKA_STEERING)
+  radar_disable_supported = not bool(flags & HyundaiFlags.CANFD_NO_RADAR_DISABLE)
+  not_camera_scc = not bool(flags & HyundaiFlags.CANFD_CAMERA_SCC)
+  return is_hda2 and radar_disable_supported and not_camera_scc and alpha_long_enabled
 
 
 class HyundaiSettings(BrandSettings):
@@ -20,11 +43,23 @@ class HyundaiSettings(BrandSettings):
     self.longitudinal_tuning_item = multiple_button_item_sp(tr("Custom Longitudinal Tuning"), "", tuning_texts,
                                                             button_width=300, callback=self._on_tuning_selected,
                                                             param="HyundaiLongitudinalTuning", inline=False)
-    self.items = [self.longitudinal_tuning_item]
+
+    self.dynamic_radar_handoff_item = toggle_item_sp(
+      lambda: tr("Dynamic Radar Handoff"),
+      description=lambda: tr(DYNAMIC_RADAR_HANDOFF_DESCRIPTION),
+      initial_state=ui_state.params.get_bool("DynamicRadarHandoffEnabled"),
+      callback=self._on_dynamic_radar_handoff_toggled,
+    )
+
+    self.items = [self.longitudinal_tuning_item, self.dynamic_radar_handoff_item]
 
   @staticmethod
   def _on_tuning_selected(index):
     ui_state.params.put("HyundaiLongitudinalTuning", index)
+
+  @staticmethod
+  def _on_dynamic_radar_handoff_toggled(state: bool):
+    ui_state.params.put_bool("DynamicRadarHandoffEnabled", state)
 
   def update_settings(self):
     self.alpha_long_available = False
@@ -57,3 +92,8 @@ class HyundaiSettings(BrandSettings):
     self.longitudinal_tuning_item.show_description(True)
     self.longitudinal_tuning_item.action_item.set_selected_button(tuning_param)
     self.longitudinal_tuning_item.set_visible(self.alpha_long_available)
+
+    alpha_long_enabled = ui_state.params.get_bool("AlphaLongitudinalEnabled")
+    self.dynamic_radar_handoff_item.set_visible(
+      should_show_dynamic_handoff(ui_state.CP, alpha_long_enabled)
+    )

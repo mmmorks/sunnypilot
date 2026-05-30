@@ -344,7 +344,7 @@ def collect(lr):
           t_sample = getattr(cur_sample, t_interp_field)
           cur_sample.t = t_sample
           # need to do one interpolation for each field, using the field's
-          # corresponsing time value.
+          # corresponding time value.
           # This works by making a list of time values and then, for each field that shares the same
           # time value, interpolating the field value at that time.
 
