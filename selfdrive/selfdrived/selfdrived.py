@@ -49,6 +49,26 @@ TurnDirection = custom.ModelDataV2SP.TurnDirection
 
 IGNORED_SAFETY_MODES = (SafetyModel.silent, SafetyModel.noOutput)
 
+# mute the CAN-loss/teardown burst raised when the bus goes silent at shutdown (engine off,
+# selfdrived still running). gated below so a genuine mid-drive dropout is never muted.
+SHUTDOWN_MUTE_MAX_SPEED = 1.5  # m/s
+CAN_LOSS_SHUTDOWN_EVENTS = (
+  EventName.canBusMissing,
+  EventName.canError,
+  EventName.controlsMismatch,
+  EventName.selfdrivedLagging,
+  EventName.locationdTemporaryError,
+)
+
+
+def mute_can_loss_at_shutdown(events, *, enabled, mads_active, can_valid, can_timeout, v_ego):
+  can_lost = can_timeout or not can_valid
+  shutting_down = not enabled and not mads_active and can_lost and v_ego < SHUTDOWN_MUTE_MAX_SPEED
+  if shutting_down:
+    for e in CAN_LOSS_SHUTDOWN_EVENTS:
+      events.remove(e)
+  return shutting_down
+
 
 class SelfdriveD(CruiseHelper):
   def __init__(self, CP=None, CP_SP=None):
@@ -455,6 +475,9 @@ class SelfdriveD(CruiseHelper):
     # mute canBusMissing event if in Park, as it sometimes may trigger a false alarm with MADS in Paused state
     if CS.gearShifter == car.CarState.GearShifter.park and self.mads.enabled:
       self.events.remove(EventName.canBusMissing)
+
+    mute_can_loss_at_shutdown(self.events, enabled=self.enabled, mads_active=self.mads.active,
+                              can_valid=CS.canValid, can_timeout=CS.canTimeout, v_ego=CS.vEgo)
 
     CruiseHelper.update(self, CS, self.events_sp, self.experimental_mode)
 
