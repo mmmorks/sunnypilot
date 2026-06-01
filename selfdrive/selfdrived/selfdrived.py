@@ -245,6 +245,13 @@ class SelfdriveD(CruiseHelper):
     if not self.CP.pcmCruise and CS.vCruise > 250 and resume_pressed:
       self.events.add(EventName.resumeBlocked)
 
+    main_button_engages_op(self.events,
+                           op_long=self.CP.openpilotLongitudinalControl,
+                           unified_engagement=self.mads.unified_engagement_mode,
+                           main_allowed=self.mads.main_enabled_toggle,
+                           cruise_available=CS.cruiseState.available,
+                           cruise_available_prev=self.CS_prev.cruiseState.available)
+
     if not self.CP.notCar:
       self.events.add_from_msg(self.sm['driverMonitoringState'].events)
       self.events_sp.add_from_msg(self.sm['longitudinalPlanSP'].events)
