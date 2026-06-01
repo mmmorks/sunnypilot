@@ -53,23 +53,41 @@ current speed. Works with gas pressed (op enters its overriding state — `gasPr
 This makes `main` honor UEM the way SET/RES already do — today `main` engages lateral-only even
 under UEM.
 
-### Implementation seam (Approach A — MADS layer)
-In `sunnypilot/mads/mads.py:update_events`, the `else` branch (~165-168) already emits
-`lkasEnable` on the cruise-available rising edge when `main_enabled_toggle`. Add: when also
-`unified_engagement_mode` and `self.selfdrive.CP.openpilotLongitudinalControl`, emit the
-op-engage event (`EventName.buttonEnable`) into `self.events`.
+### Implementation seam — `selfdrived.update_events`, before the op state machine
 
-Why here:
-- This addition runs in the `else` branch, **after** the `block_unified_engagement_mode()`
-  check (which only strips engages in the `if selfdrive_enable_events:` branch). So it is not
-  stripped when MADS lateral is already active — the exact failure mode that sinks the
-  carstate-layer alternative (Approach B), where `main`→`CS.buttonEnable` would route through
-  the `selfdrive_enable_events` path and be stripped.
-- The opendbc-base alternative (Approach C: add `mainCruise` to `update_button_enable`) is too
-  broad — every brand/car regardless of MADS/UEM. Rejected.
+**Critical ordering fact** (verified): `SelfdriveD.step()` runs `update_events` →
+`state_machine.update(self.events)` (op consumes events) → `mads.update()`
+(`selfdrive/selfdrived/selfdrived.py:614-620`). `self.events` is cleared at the top of
+`update_events` (line 199) and `self.CS_prev` is set at the end of `step()` (625). So:
+- The op-engage event MUST be in `self.events` **during** `update_events` (before line 618).
+- The MADS layer's `update_events` runs at 620, **after** op already consumed events — so its
+  `block_unified_engagement_mode()` strip only affects MADS's own state machine, never op. An
+  earlier draft placed the emit in MADS `update_events`; that cannot engage op (added too late,
+  cleared next cycle). Rejected.
 
-The emitted `buttonEnable` flows to the selfdrived state machine → op `enabled` →
-`initialize_v_cruise` (`selfdrive/car/cruise.py:141-152`) seeds the set-speed from `vEgo`.
+**Seam:** in `SelfdriveD.update_events` (`selfdrived.py`, near the existing `resumeBlocked`
+block ~234-237, which already adds an op-engage-related event before the state machine and
+references `self.CP`/`self.mads`), add on the `cruiseState.available` rising edge:
+
+```python
+# main-button engages openpilot longitudinal (unified) for op-long cars w/ MADS UEM + main allowed
+if (self.CP.openpilotLongitudinalControl and self.mads.unified_engagement_mode
+    and self.mads.main_enabled_toggle
+    and CS.cruiseState.available and not self.CS_prev.cruiseState.available):
+  self.events.add(EventName.buttonEnable)
+```
+
+Flow: op state machine (618) sees `buttonEnable` → `ET.ENABLE` → engages (gas raises only
+`gasPressedOverride`, no `NO_ENTRY`; brake's `pedalPressed`/`preEnableStandstill` still block) →
+`initialize_v_cruise` (`selfdrive/car/cruise.py:141-152`) seeds the set-speed from `vEgo`. Then
+MADS at 620 sees `selfdrive_enable_events=True`; with UEM on and MADS not yet enabled it does not
+strip, so the MADS state machine engages lateral on the same `buttonEnable` (unified). If MADS
+lateral was already active, the strip is moot — op already engaged at 618.
+
+Rejected alternatives: (B) set `CS.buttonEnable` in the HKG carstate — carstate lacks clean
+access to the MADS UEM/`MadsMainCruiseAllowed` params and the `cruiseState.available` rising
+edge; (C) add `mainCruise` to opendbc-base `update_button_enable` — too broad (every brand/car
+regardless of MADS/UEM).
 
 ### Edge cases
 - Already fully engaged + `main` press → toggles cruise off → disengage (existing).
@@ -126,9 +144,11 @@ This component is independently valuable (helps every engage, not just `main`).
 
 ## Testing
 
-- **Component 1** — `sunnypilot` MADS unit tests: cruise-available rising edge with
-  (UEM + `MadsMainCruiseAllowed` + op-long) → op engages (`buttonEnable` emitted, state machine
-  enables); without UEM → lateral-only; with gas pressed → still engages; with brake → blocked.
+- **Component 1** — extract a testable helper `main_button_engages_op(events, *, ...)` in
+  `selfdrived.py` (mirroring `mute_can_loss_at_shutdown`) and unit-test it in
+  `selfdrive/selfdrived/tests/`: cruise-available rising edge with (op-long + UEM + main-allowed)
+  → `buttonEnable` added / returns True; missing any gate (no UEM, no main-allowed, not op-long)
+  → not added; no rising edge (already available, or unavailable) → not added.
 - **Component 2** — opendbc handoff tests (`tests/test_canfd_dynamic_handoff.py` and
   `test_hyundai.py`): pipelined engage sequence still issues `0x10 03` then `0x28 03`, watchdog
   still latches `engageFailed` on NRC/timeout of either step (service-ID matching), no regression
@@ -136,12 +156,19 @@ This component is independently valuable (helps every engage, not just `main`).
   below the current 40–80 ms/transition.
 - Full opendbc safety/test suite green (libsafety parallel-build race is flaky — re-run).
 
-## Open items to verify during implementation planning
+## Open items
 
-1. Confirm emitting `EventName.buttonEnable` from the MADS layer is consumed by the state machine
-   in the **same** cycle (ordering of MADS `update_events` vs `state_machine.update` in
-   `selfdrived`).
-2. Confirm `main_enabled_toggle` ↔ `MadsMainCruiseAllowed` and `unified_engagement_mode` ↔
-   `MadsUnifiedEngagementMode` param mappings.
-3. Confirm the watchdog rework cleanly handles two-in-flight without misattributing the existing
-   1 Hz tester-present responses.
+1. ~~Same-cycle consumption from the MADS layer~~ — RESOLVED: MADS `update_events` runs *after*
+   the op state machine, so the emit must live in `SelfdriveD.update_events` (see seam above).
+2. CONFIRMED: `main_enabled_toggle` = `MadsMainCruiseAllowed`, `unified_engagement_mode` =
+   `MadsUnifiedEngagementMode` (`sunnypilot/mads/mads.py:55-58`).
+3. (Component 2, deferred) Watchdog two-in-flight + service-ID matching without misattributing
+   the 1 Hz tester-present responses.
+
+## Scope note
+
+This plan implements **Component 1 only**. Component 2 (pipeline the engage silencing) is deferred
+to a separate plan — reading `_tick_handoff_watchdog` showed its response parser is latest-frame /
+single-outstanding (`carcontroller.py:240-243`), so safe pipelining needs a response-capture
+rework in validated safety code for a ~10-20 ms gain on an already-clean <100 ms transition.
+Revisit after Component 1 is validated on-car.
