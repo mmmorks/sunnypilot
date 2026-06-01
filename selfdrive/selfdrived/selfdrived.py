@@ -70,6 +70,15 @@ def mute_can_loss_at_shutdown(events, *, enabled, mads_active, can_valid, can_ti
   return shutting_down
 
 
+def main_button_engages_op(events, *, op_long, unified_engagement, main_allowed,
+                           cruise_available, cruise_available_prev):
+  engage = (op_long and unified_engagement and main_allowed
+            and cruise_available and not cruise_available_prev)
+  if engage:
+    events.add(EventName.buttonEnable)
+  return engage
+
+
 class SelfdriveD(CruiseHelper):
   def __init__(self, CP=None, CP_SP=None):
     self.params = Params()
