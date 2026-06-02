@@ -5,7 +5,7 @@ from openpilot.selfdrive.selfdrived.selfdrived import main_button_engages_op
 EventName = log.OnroadEvent.EventName
 
 # All gates satisfied, on the cruise-available rising edge (the main-button press).
-ENGAGE = dict(op_long=True, unified_engagement=True, main_allowed=True,
+ENGAGE = dict(op_long=True, mads_enabled=True, unified_engagement=True, main_allowed=True,
               cruise_available=True, cruise_available_prev=False)
 
 
@@ -22,6 +22,11 @@ class TestMainButtonEngagesOp:
   def test_no_engage_when_not_op_long(self):
     events = make_events()
     assert not main_button_engages_op(events, **{**ENGAGE, "op_long": False})
+    assert EventName.buttonEnable not in events.names
+
+  def test_mads_disabled_blocks_engage(self):
+    events = make_events()
+    assert not main_button_engages_op(events, **{**ENGAGE, "mads_enabled": False})
     assert EventName.buttonEnable not in events.names
 
   def test_no_engage_without_unified_engagement(self):
