@@ -1,132 +1,151 @@
-# HKG CAN-FD Dynamic Handoff — panda grants longitudinal authority on `main`
+# HKG main-button engages openpilot longitudinal — derived panda authority flag
 
-Date: 2026-06-01
+Date: 2026-06-01 (revised)
 Status: Design approved, pending implementation plan
-Repos touched: `opendbc_repo` submodule (panda safety) — no `sunnypilot` main-repo behavior change
+Repos touched: `sunnypilot` (main: `helpers.py`, `selfdrived.py`) + `opendbc_repo` submodule (panda safety + Hyundai SP values)
 
 ## Problem
 
 The shipped `main_button_engages_op` change (commits `ebb47f326c` + `f87bc63b20`, master HEAD
 `77ee3cb52`) makes `selfdrived` flip openpilot to `enabled` on the cruise-`main` rising edge for
 op-long MADS-UEM cars. Today's live HKG CAN-FD drives (2026-06-01, routes
-`0000037f--f18904f139` and `00000380--7b696fe946`, device `comma-3a30a619`) show it
-**force-disengages with a critical `controlsMismatch` ~2 s after every main-only engage**:
-
-- Drive `037f` t=25.3 s: `mainCruise` press → op `enabled`, `pandaState.controlsAllowed=False` →
-  `mismatch_counter` climbs → `controlsMismatch` (immediateDisable) at t=27.3 s.
-- Drive `0380` t=171.4 s: `mainCruise` at standstill (no pedals) → same, disabled at t=173.5 s.
-- The engage only "stuck" when the driver additionally pressed SET/`decelCruise` (037f t=64.5 s →
-  `controlsAllowed` flipped True at t=65.1 s).
-
-Baseline pre-change drive `0000037e` (`c96cecc8d`) had **zero** `buttonEnable` and **zero**
-`controlsMismatch`, confirming the disengagement is caused by this change.
+`0000037f--f18904f139` and `00000380--7b696fe946`, device `comma-3a30a619`)
+**force-disengage with a critical `controlsMismatch` ~2 s after every main-only engage**, and the
+pre-change baseline `0000037e` (`c96cecc8d`) had zero `controlsMismatch`.
 
 ### Root cause
 
-For `hyundai_longitudinal` (op-long) cars the panda grants longitudinal `controls_allowed`
-**only on the SET/RES button falling edge** read from the driver's stalk
-(`opendbc/safety/modes/hyundai_canfd.h:105-118` → `hyundai_common.h:133-138`). The main button
-only toggles `acc_main_on` (`hyundai_common.h:146-148`), never `controls_allowed`. And openpilot
-**cannot self-grant** it: the tx hook (`hyundai_canfd.h:214`) blocks op from transmitting SET/RES
-unless `controls_allowed` is already True. So `selfdrived` flipping `enabled` in software with no
-panda authority is structurally guaranteed to trip `controlsMismatch`. There is **no
-software-only fix** — main-engages-longitudinal requires a panda safety-model change.
+For op-long Hyundai cars the panda grants longitudinal `controls_allowed` only on the SET/RES
+button falling edge (`hyundai_common.h:133-138`); the main button only toggles `acc_main_on`
+(`:146-148`), never `controls_allowed`. openpilot cannot self-grant it (tx hook gates op's SET/RES
+on `controls_allowed`, `hyundai_canfd.h:214`). So `selfdrived` flipping `enabled` in software with
+no panda authority is guaranteed to trip `controlsMismatch` (`selfdrived.py:375-376,548-554`).
+**There is no software-only fix — main-engages-longitudinal needs a panda change.** Verified
+against upstream openpilot (`~/Code/openpilot` @ `1df90d143`): identical SET/RES-only grant, no
+main path, identical `mismatch_counter→controlsMismatch` logic.
 
-The existing handoff engage-silencing also depends on `controls_allowed` (the panda only accepts
-the `disableRxAndTx` silencing frame while `controls_allowed`, `hyundai_canfd.h:231-239`), so
-granting authority on main is also what lets the stock SCC actually get silenced on a main press.
+### The hard constraint that shapes this design
+
+The panda grant and `selfdrived`'s engage **must fire on exactly the same condition**. If the
+panda grants `controls_allowed` when `selfdrived` does NOT engage op, the dynamic-handoff forward
+hook (`hyundai_canfd.h:287`: `block = !dynamic_handoff || controls_allowed`) **silences the stock
+SCC/AEB (`0x1a0`) with nothing replacing it** — a safety regression. This rules out gating the
+grant on anything coarser than `selfdrived`'s condition.
+
+`selfdrived`'s engage condition uses `MadsUnifiedEngagementMode` (UEM) and `MadsMainCruiseAllowed`,
+which **never reach the panda** (no safety param, no altExp bit — verified). The panda's own
+`controls_allowed_lateral` only encodes "MADS on" (granted on any `acc_main` rising edge,
+`mads.h:87-90,128`), so it cannot stand in for those toggles. Therefore the condition must be
+**propagated to the panda as a single derived flag**.
 
 ## Goals
 
-1. On `CANFD_DYNAMIC_HANDOFF` cars, a cruise-`main` press grants the panda longitudinal
-   `controls_allowed`, so `selfdrived`'s `enabled` and the panda's authority come up together —
-   op engages fully (lateral + longitudinal) and the existing handoff silences the stock SCC.
-2. Symmetric teardown: turning the system off via `main` revokes longitudinal authority.
-3. No regression to SET/RES/CANCEL engagement, and no behavior change on any non-handoff car
-   (notably Honda, where `main` is the off switch — `honda.h:151-152`).
+1. A cruise-`main` press engages openpilot longitudinal (+ lateral) on op-long Hyundai cars when
+   the user's MADS main-engage opts are on, with the panda granting `controls_allowed` to match so
+   no `controlsMismatch` fires. On dynamic-handoff cars this also silences the stock SCC via the
+   existing engage pipeline.
+2. The panda grant and `selfdrived` engage are **always in lockstep** (one derived flag drives
+   both conditions), so `controls_allowed` is never True without op engaging → stock SCC/AEB is
+   never silenced without op control.
+3. The existing `MadsMainCruiseAllowed` / UEM / `Mads` toggles keep working: turning any off
+   cleanly returns to the prior behavior (two-step, or main-inert).
 
 ## Non-goals
 
-- No revert of the `selfdrived` `main_button_engages_op` change — it is **kept**; this spec adds
-  the panda half that makes it work.
-- No new safety flag / param propagation — reuse the existing `CANFD_DYNAMIC_HANDOFF` flag
-  (decision below). No change to the MADS UEM / `MadsMainCruiseAllowed` gating in `selfdrived`.
-- No change to SET/RES/CANCEL grant logic, to lateral (MADS) authority, or to Honda / non-CANFD
-  Hyundai.
-- Not addressing the separate `adasDrvHandoffEngageFail` "SP immediate-disable doesn't actually
-  disengage" observation (tracked separately).
+- **No new user-facing setting.** The flag is *derived* from existing params, not exposed.
+- No change to SET/RES/CANCEL grant logic, to MADS lateral authority, or to Honda / non-Hyundai.
+- Not addressing the separate `adasDrvHandoffEngageFail` "SP immediate-disable doesn't disengage"
+  observation (tracked separately).
 
 ## Design
 
-### Trigger (engage)
-On the `acc_main_on` **rising** edge (driver's main-button press toggling the system on), when
-the active config has `CANFD_DYNAMIC_HANDOFF` set: `controls_allowed = true`. This mirrors the
-SET/RES falling-edge grant.
+### 1. Derived safety flag
 
-### Trigger (disengage)
-On the `acc_main_on` **falling** edge (main pressed again → system off): `controls_allowed =
-false`. CANCEL continues to revoke as today. Symmetric with the grant — "main turns the whole
-system on/off."
+Add `HyundaiSafetyFlagsSP.MAIN_ENGAGES_OP_LONG = 16` (next free bit; `ESCC=1`,
+`LONG_MAIN_CRUISE_TOGGLEABLE=2`, `HAS_LDA_BUTTON=4`, `NON_SCC=8`) and the matching C enum
+`HYUNDAI_PARAM_SP_MAIN_ENGAGES_OP_LONG = 16`.
 
-### Location
-The main button already toggles `acc_main_on` in `hyundai_common_cruise_buttons_check`
-(`hyundai_common.h:146-148`). The grant/revoke is added at that toggle, guarded by the
-dynamic-handoff flag. Because the flag (`hyundai_canfd_dynamic_handoff`) is CANFD-scoped while
-`hyundai_common_cruise_buttons_check` is shared with CAN Hyundai, the implementation will either
-(a) thread a `bool main_engages_long` parameter into `hyundai_common_cruise_buttons_check`, or
-(b) perform the `controls_allowed` grant/revoke in the CANFD rx hook immediately around the
-common call, keying off the `acc_main_on` edge. Choice made at plan time to keep `hyundai_common`
-generic; **(a) is preferred** (single place, edge state already lives in common).
+Derive it in `sunnypilot/mads/helpers.py:set_car_specific_params` (inside the existing
+`CP.brand == "hyundai"` block), setting `CP_SP.safetyParam |= MAIN_ENGAGES_OP_LONG` iff:
 
-### Gating decision — reuse `CANFD_DYNAMIC_HANDOFF`
-No new flag. The grant fires for every dynamic-handoff car. For a handoff user who has
-`MadsMainCruiseAllowed` **off** (wants the two-step), the panda grants `controls_allowed` on main
-but `selfdrived` does not emit `buttonEnable`, so op stays disengaged — a benign "armed but idle"
-state: no actuation and no stock silencing (the handoff engage-silencing keys off `CC.enabled`,
-not `controls_allowed`), until they press SET. The two-step still works; the early grant is inert.
+```
+CP.openpilotLongitudinalControl
+  and params.get_bool("Mads")
+  and params.get_bool("MadsUnifiedEngagementMode")
+  and params.get_bool("MadsMainCruiseAllowed")
+```
 
-### Coordination with selfdrived
-`selfdrived`'s `buttonEnable` (cruise-available rising edge) and the panda grant (`acc_main_on`
-rising edge) fire on the same physical main press, so `enabled` and `controls_allowed` rise
-together and `mismatch_counter` never accumulates. The `acc_main_on` ↔ `acc_main_on_tx` sync /
-mismatch path (`hyundai_common.h:191-193`) must remain consistent so the new grant does not trip
-the acc-main mismatch counter — verified as part of implementation.
+This is exactly `selfdrived`'s engage condition, so the panda and `selfdrived` are guaranteed to
+agree. (Dynamic handoff is not part of the condition — the feature is valid for any op-long
+Hyundai; on handoff cars the existing engage-silencing pipeline composes on top. Handoff is the
+on-car-validated case.)
 
-### Standstill & entry guards
-The panda only *permits*; op's own state machine still decides when to actually command
-(`preEnableStandstill` NO_ENTRY → "release brake to engage"; gear must be D; brake/reverse block).
-So granting authority at standstill needs no special panda handling — it matches a SET press at
-standstill today.
+### 2. Panda grant
+
+In `hyundai_common.h`: add `extern bool hyundai_main_engages_op_long` (default false), set it in
+`hyundai_common_init` from `current_safety_param_sp`. At the `acc_main_on` toggle in
+`hyundai_common_cruise_buttons_check` (`:146-148`), grant/revoke when the flag is set:
+
+```c
+if (main_button && !main_button_prev && hyundai_longitudinal_main_cruise_toggleable) {
+  acc_main_on = !acc_main_on;
+  if (hyundai_main_engages_op_long) {
+    controls_allowed = acc_main_on;   // grant on toggle-on, revoke on toggle-off
+  }
+}
+```
+
+No function-signature change (uses the global, like `hyundai_longitudinal_main_cruise_toggleable`).
+SET/RES/CANCEL grants are untouched. This lives in `hyundai_common`, so it applies to CAN and
+CAN-FD op-long Hyundai equally; non-Hyundai (incl. Honda) is unaffected.
+
+### 3. selfdrived condition match
+
+Add a `mads_enabled` keyword to `main_button_engages_op` (`selfdrived.py:73`) and gate on it, so
+the helper's condition equals the flag's (it currently omits the `Mads` check):
+
+```python
+def main_button_engages_op(events, *, op_long, mads_enabled, unified_engagement, main_allowed,
+                           cruise_available, cruise_available_prev):
+  engage = (op_long and mads_enabled and unified_engagement and main_allowed
+            and cruise_available and not cruise_available_prev)
+```
+
+The caller (`:248`) passes `mads_enabled=self.mads.enabled_toggle` (the `Mads` param).
+
+### Behavior matrix (why every toggle combo is safe)
+
+| Mads | UEM | MainCruiseAllowed | flag | selfdrived on main | panda on main | net |
+|---|---|---|---|---|---|---|
+| on | on | on | **set** | engages op-long | grants `controls_allowed` | op does lat+long, stock silenced ✓ |
+| on | off | on | clear | MADS lateral only (`mads.py:166`) | no grant → stock fwd | op lateral + stock long (two-step) ✓ |
+| on | on/off | off | clear | nothing on main | no grant | main inert; SET engages ✓ |
+| off | * | * | clear | nothing (helper gated on `mads_enabled`) | no grant | main inert; SET engages ✓ |
+
+The flag (panda) and the helper (selfdrived) are clear/set together in every row → no desync → the
+stock SCC/AEB is silenced only when op is actually the longitudinal authority.
 
 ## Testing
 
-Safety-code change → `opendbc/safety/tests/test_hyundai_canfd.py` gets:
-
-- With `CANFD_DYNAMIC_HANDOFF`: `acc_main_on` rising edge grants `controls_allowed`; falling edge
-  revokes; CANCEL revokes; SET/RES still grant.
-- Without the flag (regression guard): main rising edge does **not** grant `controls_allowed`;
-  SET/RES/CANCEL unchanged.
-- acc-main-mismatch path unaffected by the new grant.
-
-Run the full safety suite (`opendbc/safety` tests). Note the project memory flake: a parallel
-libsafety build race can surface `undefined symbol: set_safety_hooks` — re-run if seen.
+- **Panda** (`opendbc/safety/tests/test_hyundai_canfd.py`): with `MAIN_ENGAGES_OP_LONG +
+  LONG_MAIN_CRUISE_TOGGLEABLE`, main rising edge grants `controls_allowed`, second press (toggle
+  off) revokes; without `MAIN_ENGAGES_OP_LONG`, main does **not** grant (regression guard).
+  100%-line-coverage gate (`test.sh --fail-under-line=100`) — exercise grant and revoke.
+- **selfdrived** (`tests/test_main_button_engages_op.py`): `mads_enabled=False` blocks engage even
+  when all else is set; existing engage cases updated to pass `mads_enabled=True`.
 
 ## Risks
 
-- **Granting longitudinal authority on a non-SET button** is the sensitive part. Justified by:
-  narrow gating to the fork-only `CANFD_DYNAMIC_HANDOFF` config; it mirrors what these cars' stock
-  SCC already does on a main press (main activates ACC); and op's own entry guards remain in force.
-  Fork-only — upstream comma would not accept main-engages-longitudinal.
-- **Desync with the selfdrived MADS gate** for `MadsMainCruiseAllowed`-off users is analyzed above
-  and is inert (no actuation without `enabled`).
+- Granting longitudinal authority on a non-SET button: narrowly gated by a flag that equals
+  `selfdrived`'s engage condition, so it only happens when op actually engages. Fork-only.
+- `acc_main_on` (panda, button-toggled) vs `cruiseState.available` (selfdrived, from car) are
+  distinct edges; the existing `acc_main_on` drift sync (`hyundai_common.h:191-193`) bounds
+  divergence. Verify on-car.
 
 ## Evidence / references
 
-- Live drives: `0000037f--f18904f139`, `00000380--7b696fe946` (post-change, HEAD `77ee3cb52`);
-  baseline `0000037e--1c7939d8bd` (`c96cecc8d`). Device `comma-3a30a619`.
-- Panda: `opendbc/safety/modes/hyundai_canfd.h:105-118,208-239`, `hyundai_common.h:109-160,191-193`,
-  `honda.h:97-160` (contrast).
-- selfdrived: `selfdrive/selfdrived/selfdrived.py` (`main_button_engages_op`, `mismatch_counter`
-  375-376/548-554, `cruiseMismatch` 450-452).
-- Prior specs: `2026-05-27-hkg-canfd-dynamic-radar-handoff-design.md`,
-  `2026-05-31-hkg-handoff-main-engage-op-long-design.md`.
+- Drives `0000037f`, `00000380` (post-change), baseline `0000037e` (`c96cecc8d`).
+- Panda: `hyundai_common.h:90,109-160,191-193`; `hyundai_canfd.h:214,287`; `mads.h:87-90,128`.
+- selfdrived: `selfdrived.py:73-80,248-252,375-376,548-554`; `sunnypilot/mads/mads.py:55-62,166`.
+- Flags: `opendbc/sunnypilot/car/hyundai/values.py` (`HyundaiSafetyFlagsSP`); `helpers.py:53-62`.
+- Upstream cross-check: `~/Code/openpilot` `safety/safety/safety_hyundai_common.h:91-108`.
