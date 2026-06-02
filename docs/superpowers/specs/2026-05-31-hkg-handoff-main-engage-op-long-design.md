@@ -1,5 +1,12 @@
 # HKG CAN-FD Dynamic Handoff — `main` button engages openpilot longitudinal
 
+> **ROLLED BACK (2026-06-01).** This approach was reverted. Live drives (`0000037f`, `00000380`)
+> showed that suppressing stock long on the `main` press requires claiming longitudinal authority
+> (`controls_allowed`), which is only safe if op simultaneously *provides* longitudinal — i.e. full
+> main-engage, with the controlsMismatch/handoff fragility that entails. We instead keep `main` =
+> MADS lateral only (`lkasEnable`), op long on SET, stock SCC doing longitudinal in between.
+> Retained as historical record of the tried approach.
+
 Date: 2026-05-31
 Status: Design approved, pending implementation plan
 Repos touched: `sunnypilot` (main) + `opendbc_repo` submodule

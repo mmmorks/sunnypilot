@@ -59,15 +59,6 @@ def set_car_specific_params(CP: structs.CarParams, CP_SP: structs.CarParamsSP, p
       CP_SP.flags |= HyundaiFlagsSP.LONGITUDINAL_MAIN_CRUISE_TOGGLEABLE.value
       CP_SP.safetyParam |= HyundaiSafetyFlagsSP.LONG_MAIN_CRUISE_TOGGLEABLE
 
-    # Derived (not a user toggle): main grants op longitudinal authority — matches selfdrived's
-    # main_button_engages_op exactly so the panda controls_allowed grant never desyncs from op engaging.
-    main_engages_op_long = (CP.openpilotLongitudinalControl
-                            and params.get_bool("Mads")
-                            and params.get_bool("MadsUnifiedEngagementMode")
-                            and params.get_bool("MadsMainCruiseAllowed"))
-    if main_engages_op_long:
-      CP_SP.safetyParam |= HyundaiSafetyFlagsSP.MAIN_ENGAGES_OP_LONG
-
   # MADS Partial Support
   # MADS is currently partially supported for these platforms due to lack of consistent states to engage controls
   # Only MadsSteeringModeOnBrake.DISENGAGE is supported for these platforms

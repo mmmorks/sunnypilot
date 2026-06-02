@@ -70,15 +70,6 @@ def mute_can_loss_at_shutdown(events, *, enabled, mads_active, can_valid, can_ti
   return shutting_down
 
 
-def main_button_engages_op(events, *, op_long, mads_enabled, unified_engagement, main_allowed,
-                           cruise_available, cruise_available_prev):
-  engage = (op_long and mads_enabled and unified_engagement and main_allowed
-            and cruise_available and not cruise_available_prev)
-  if engage:
-    events.add(EventName.buttonEnable)
-  return engage
-
-
 class SelfdriveD(CruiseHelper):
   def __init__(self, CP=None, CP_SP=None):
     self.params = Params()
@@ -244,14 +235,6 @@ class SelfdriveD(CruiseHelper):
     resume_pressed = any(be.type in (ButtonType.accelCruise, ButtonType.resumeCruise) for be in CS.buttonEvents)
     if not self.CP.pcmCruise and CS.vCruise > 250 and resume_pressed:
       self.events.add(EventName.resumeBlocked)
-
-    main_button_engages_op(self.events,
-                           op_long=self.CP.openpilotLongitudinalControl,
-                           mads_enabled=self.mads.enabled_toggle,
-                           unified_engagement=self.mads.unified_engagement_mode,
-                           main_allowed=self.mads.main_enabled_toggle,
-                           cruise_available=CS.cruiseState.available,
-                           cruise_available_prev=self.CS_prev.cruiseState.available)
 
     if not self.CP.notCar:
       self.events.add_from_msg(self.sm['driverMonitoringState'].events)

@@ -1,5 +1,10 @@
 # HKG main-button engages openpilot longitudinal — derived panda authority flag
 
+> **ROLLED BACK (2026-06-01).** See the companion design doc's note. The `MAIN_ENGAGES_OP_LONG`
+> panda grant and the selfdrived `main_button_engages_op` emit were removed; the `opendbc_repo`
+> gitlink was re-pointed to the handoff-pipeline commit (`bfdb9ae391`) that lacks the grant.
+> `main` reverts to MADS lateral only. Retained as historical record.
+
 Date: 2026-06-01 (revised)
 Status: Design approved, pending implementation plan
 Repos touched: `sunnypilot` (main: `helpers.py`, `selfdrived.py`) + `opendbc_repo` submodule (panda safety + Hyundai SP values)
