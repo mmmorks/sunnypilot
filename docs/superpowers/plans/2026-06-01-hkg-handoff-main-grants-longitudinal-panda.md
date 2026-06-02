@@ -82,13 +82,16 @@ from opendbc.sunnypilot.car.hyundai.values import HyundaiSafetyFlagsSP
 
 - [ ] **Step 2: Write the failing positive test**
 
-Add to `class TestHyundaiCanfdLFASteeringLong` (the concrete long, non-handoff class at ~line 289):
+Add to `class TestHyundaiCanfdLKASteeringLongDynamicHandoff` (the dynamic-handoff class at ~line
+316 — this is the safety-relevant path, where the forward hook silences the stock SCC on
+`controls_allowed`; its `setUp` already sets `CANFD_DYNAMIC_HANDOFF`, and the test layers the new
+flag on top via `set_current_safety_param_sp` + `set_safety_hooks(mode, param)`):
 
 ```python
   def test_main_cruise_engages_longitudinal(self):
-    """With MAIN_ENGAGES_OP_LONG, a main-cruise press grants longitudinal controls_allowed (engage),
-    and a second press (main off) revokes it — so a single main press engages op long instead of
-    tripping controlsMismatch."""
+    """With MAIN_ENGAGES_OP_LONG under dynamic handoff, a main-cruise press grants longitudinal
+    controls_allowed (engage), and a second press (main off) revokes it — so a single main press
+    engages op long (and lets op silence the stock SCC) instead of tripping controlsMismatch."""
     default_sp = self.safety.get_current_safety_param_sp()
     self.safety.set_current_safety_param_sp(default_sp | HyundaiSafetyFlagsSP.LONG_MAIN_CRUISE_TOGGLEABLE
                                             | HyundaiSafetyFlagsSP.MAIN_ENGAGES_OP_LONG)
@@ -170,7 +173,10 @@ Expected: PASS.
 
 - [ ] **Step 7: Write the regression test (no flag → no grant)**
 
-Add to the same `class TestHyundaiCanfdLFASteeringLong`:
+Add to `class TestHyundaiCanfdLFASteeringLong` (the concrete long, non-handoff class at ~line 289).
+Use this class — NOT the dynamic-handoff class from Step 2 — because it is not an ancestor of
+`TestHyundaiCanfdLKASteeringLongDynamicHandoff`, so the no-flag assertion only runs without the
+handoff/main-engage flags:
 
 ```python
   def test_main_cruise_no_longitudinal_grant_without_flag(self):
@@ -270,14 +276,15 @@ ENGAGE = dict(op_long=True, mads_enabled=True, unified_engagement=True, main_all
               cruise_available=True, cruise_available_prev=False)
 ```
 
-Then add a new test asserting `mads_enabled=False` blocks engagement (place it next to the other
-gate tests):
+Then add a new test **as a method of the existing `class TestMainButtonEngagesOp`** (the file is
+class-based and uses the `make_events()` helper, not bare `Events()` — match that), next to the
+other gate methods:
 
 ```python
-def test_mads_disabled_blocks_engage():
-  events = Events()
-  assert not main_button_engages_op(events, **{**ENGAGE, "mads_enabled": False})
-  assert EventName.buttonEnable not in events.names
+  def test_mads_disabled_blocks_engage(self):
+    events = make_events()
+    assert not main_button_engages_op(events, **{**ENGAGE, "mads_enabled": False})
+    assert EventName.buttonEnable not in events.names
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
@@ -308,7 +315,7 @@ def main_button_engages_op(events, *, op_long, mads_enabled, unified_engagement,
 
 - [ ] **Step 4: Update the caller**
 
-In `selfdrive/selfdrived/selfdrived.py`, change the call (lines 248-252) to pass `mads_enabled`:
+In `selfdrive/selfdrived/selfdrived.py`, change the call (lines 248-253) to pass `mads_enabled`:
 
 ```python
     main_button_engages_op(self.events,
